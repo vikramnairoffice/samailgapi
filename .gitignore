@@ -195,6 +195,7 @@ testing/*.json
 gmail_tokens/
 testing & qa/
 qest/
+logos/
 
 # Exclude specified documentation files
 Agent.md
