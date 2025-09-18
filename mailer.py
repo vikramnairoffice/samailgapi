@@ -3,6 +3,8 @@ import glob
 import os
 import random
 import time
+from queue import Queue
+from threading import Thread
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -261,26 +263,63 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
 
 
 def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], leads_per_account: int, config: Dict[str, Any], send_delay_seconds: float) -> Iterable[Dict[str, Any]]:
-    """Sequentially send emails for each account and yield progress dictionaries."""
-    invoice_gen = InvoiceGenerator()
+    """Send emails per account concurrently and yield their progress."""
     account_count = len(accounts)
+    if account_count <= 0:
+        return
 
-    if mode == 'gmass':
+    delay_seconds = float(send_delay_seconds or 0.0)
+    if delay_seconds < 0:
+        delay_seconds = 0.0
+
+    if (mode or '').lower() == 'gmass':
         assignments = [list(DEFAULT_GMASS_RECIPIENTS) for _ in range(account_count)]
     else:
         assignments = distribute_leads(leads, account_count, leads_per_account)
 
-    for account, account_leads in zip(accounts, assignments):
-        for lead_email in account_leads:
-            success, message = send_single_email(account, lead_email, config, invoice_gen)
-            yield {
-                'account': account['email'],
-                'lead': lead_email,
-                'success': success,
-                'message': message,
-            }
-            time.sleep(send_delay_seconds)
+    result_queue: Queue = Queue()
+    sentinel = object()
+    threads: List[Thread] = []
+    invoice_factory = InvoiceGenerator
 
+    def worker(account: Dict[str, Any], account_leads: List[str]) -> None:
+        try:
+            invoice_gen = invoice_factory()
+            for lead_email in account_leads:
+                try:
+                    success, message = send_single_email(account, lead_email, config, invoice_gen)
+                except Exception as exc:  # pragma: no cover - defensive guard
+                    success, message = False, str(exc)
+                result_queue.put({
+                    'account': account['email'],
+                    'lead': lead_email,
+                    'success': success,
+                    'message': message,
+                })
+                if delay_seconds > 0:
+                    time.sleep(delay_seconds)
+        finally:
+            result_queue.put(sentinel)
+
+    for account, account_leads in zip(accounts, assignments):
+        thread = Thread(target=worker, args=(account, account_leads), daemon=True)
+        thread.start()
+        threads.append(thread)
+
+    if not threads:
+        return
+
+    active_workers = len(threads)
+    try:
+        while active_workers:
+            item = result_queue.get()
+            if item is sentinel:
+                active_workers -= 1
+                continue
+            yield item
+    finally:
+        for thread in threads:
+            thread.join()
 
 def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_account: int, send_delay_seconds: float, mode: str,
                     content_template: str, email_content_mode: str, attachment_format: str,
