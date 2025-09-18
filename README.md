@@ -3,11 +3,11 @@
 Token-first Gmail sender with a Gradio dashboard, personalized invoice generation, and a Colab-friendly workflow. Upload OAuth token JSON files, tune email content, and monitor progress from the browser or a notebook.
 
 ## Highlights
-- **Gmail REST only** – no SMTP passwords; each token is verified via the Gmail profile endpoint before sends.
-- **Colab form cell** – copy `colab_form_cell.py` into a notebook cell for an all-in-one upload + send experience.
-- **Invoice/attachment workflow** – generate PDFs/HEIF images on the fly or re-use assets stored under `pdfs/`, `images/`, and `logos/`.
-- **Seed + leads modes** – blast the bundled GMass seed list or distribute uploaded leads across accounts.
-- **Console entry point** – install the package and launch the Gradio UI with `simple-mailer`.
+- **Gmail REST only** - no SMTP passwords; each token is verified via the Gmail profile endpoint before sends.
+- **Colab form cell** - copy `colab_form_cell.py` into a notebook cell for an all-in-one upload + send experience.
+- **Invoice/attachment workflow** - generate PDFs/HEIF images on the fly or re-use assets stored under `pdfs/`, `images/`, and `logos/`.
+- **Seed + leads modes** - blast the bundled GMass seed list or distribute uploaded leads across accounts.
+- **Console entry point** - install the package and launch the Gradio UI with `simple-mailer`.
 
 ## Installation
 
@@ -35,16 +35,16 @@ from ui import main  # launches the Gradio dashboard
 
 1. **Install the package**
    ```python
-   # Cell 1 – install from GitHub
+   # Cell 1 - install from GitHub
    !pip install -q -U git+https://github.com/<owner>/<repo>.git@main
    ```
 2. **Launch a UI**
-   - Option A – run the packaged Gradio app:
+   - Option A - run the packaged Gradio app:
      ```python
      from ui import main
      main()  # opens Gradio in Colab output
      ```
-   - Option B – paste the contents of `colab_form_cell.py` into a Colab cell. The form handles token/leads uploads and streams campaign progress inside the notebook.
+   - Option B - paste the contents of `colab_form_cell.py` into a Colab cell. The form handles token/leads uploads and streams campaign progress inside the notebook.
 
 If you prefer an imperative helper, execute:
 ```python
@@ -79,4 +79,4 @@ setup.py            # Packaging configuration
 - Keep runtime assets (logos, prebuilt attachments, tokens) out of version control; they are covered in `.gitignore`.
 
 ## License
-MIT – for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.
+MIT - for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.
