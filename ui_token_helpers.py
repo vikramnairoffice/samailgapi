@@ -57,7 +57,10 @@ def start_campaign(token_files, leads_file, leads_per_account, send_delay_second
         email_content_mode=email_content_mode,
         attachment_format='pdf',
         invoice_format=invoice_format,
-\ \ \ \ \ \ \ \ support_number=support_number,\r\n\ \ \ \ \ \ \ \ advance_header=advance_header,\r\n\ \ \ \ \ \ \ \ force_header=force_header,\r\n\ \ \ \ \ \ \ \ sender_name_type=sender_name_type,
+        support_number=support_number,
+        advance_header=advance_header,
+        force_header=force_header,
+        sender_name_type=sender_name_type,
         attachment_folder=attachment_folder,
     )
 
