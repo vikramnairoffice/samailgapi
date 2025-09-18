@@ -31,4 +31,5 @@ Alternative version: IPywidget
 
 
 Testing Whole system: 
+Logos are not working from Github 
 

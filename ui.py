@@ -4,7 +4,7 @@ import gradio as gr
 
 from mailer import update_file_stats
 from content import SENDER_NAME_TYPES, DEFAULT_SENDER_NAME_TYPE
-from ui_token_helpers import analyze_token_files, start_campaign
+from ui_token_helpers import analyze_token_files, start_campaign, build_gmass_preview, gmass_rows_to_markdown, fetch_mailbox_counts
 
 
 def _leads_status(leads_file):
@@ -40,6 +40,15 @@ def _map_content_template(choice: str) -> str:
     return choice
 
 
+def _gmass_preview_update(mode_value, token_files):
+    if (mode_value or '').lower() != 'gmass':
+        return gr.update(visible=False), "", ""
+
+    status, rows = build_gmass_preview(mode_value, token_files)
+    markdown = gmass_rows_to_markdown(rows)
+    return gr.update(visible=True), status, markdown
+
+
 def gradio_ui():
     with gr.Blocks(title="Simple Gmail REST Mailer") as demo:
         gr.Markdown("# Simple Gmail REST Mailer")
@@ -58,6 +67,25 @@ def gradio_ui():
                     lines=3
                 )
                 token_files.change(analyze_token_files, inputs=token_files, outputs=token_stats)
+
+                check_mailboxes_btn = gr.Button(
+                    "Check Inbox/Sent Counts",
+                    variant="secondary"
+                )
+                mailbox_status = gr.Textbox(
+                    label="Mailbox Status",
+                    value="Click the button to preview inbox and sent totals.",
+                    interactive=False,
+                    lines=2
+                )
+                mailbox_preview = gr.Markdown(
+                    label="Mailbox Counts"
+                )
+                check_mailboxes_btn.click(
+                    fetch_mailbox_counts,
+                    inputs=token_files,
+                    outputs=[mailbox_status, mailbox_preview]
+                )
 
                 leads_file = gr.File(label="Leads File (one email per line)")
                 leads_stats = gr.Textbox(
@@ -85,6 +113,16 @@ def gradio_ui():
                     value="gmass",
                     label="Sending Mode"
                 )
+
+                with gr.Group(visible=True) as gmass_preview_group:
+                    gmass_status = gr.Textbox(
+                        label="GMass Status",
+                        interactive=False,
+                        lines=2
+                    )
+                    gmass_urls_display = gr.Markdown(
+                        label="GMass Deliverability URLs"
+                    )
 
             with gr.Column():
                 content_template_choice = gr.Radio(
@@ -152,6 +190,17 @@ def gradio_ui():
                     info="Forges SPF/DKIM/DMARC success markers for controlled tests"
                 )
 
+        mode.change(
+            _gmass_preview_update,
+            inputs=[mode, token_files],
+            outputs=[gmass_preview_group, gmass_status, gmass_urls_display]
+        )
+        token_files.change(
+            _gmass_preview_update,
+            inputs=[mode, token_files],
+            outputs=[gmass_preview_group, gmass_status, gmass_urls_display]
+        )
+
         start_btn = gr.Button("Start Sending", variant="primary")
 
         log_box = gr.Textbox(label="Log", value="", interactive=False, lines=15)
@@ -175,7 +224,7 @@ def gradio_ui():
                 sender_name_type,
                 content_template_value,
             ],
-            outputs=[log_box, status_box, summary_box]
+            outputs=[log_box, status_box, summary_box, gmass_status, gmass_urls_display]
         )
 
     return demo
@@ -188,4 +237,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
