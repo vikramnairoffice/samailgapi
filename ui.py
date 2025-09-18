@@ -140,6 +140,18 @@ def gradio_ui():
                     placeholder="Optional"
                 )
 
+                advance_header = gr.Checkbox(
+                    label="Advanced Header Pack",
+                    value=False,
+                    info="Adds X-Sender and Message-ID headers for testing"
+                )
+
+                force_header = gr.Checkbox(
+                    label="Force Auth Headers",
+                    value=False,
+                    info="Forges SPF/DKIM/DMARC success markers for controlled tests"
+                )
+
         start_btn = gr.Button("Start Sending", variant="primary")
 
         log_box = gr.Textbox(label="Log", value="", interactive=False, lines=15)
@@ -158,6 +170,8 @@ def gradio_ui():
                 attachment_folder,
                 invoice_format,
                 support_number,
+                advance_header,
+                force_header,
                 sender_name_type,
                 content_template_value,
             ],

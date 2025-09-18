@@ -1,4 +1,5 @@
 import base64
+import datetime
 import glob
 import os
 import random
@@ -11,6 +12,7 @@ from email.mime.text import MIMEText
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
+from email.utils import formatdate, make_msgid
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
@@ -97,7 +99,8 @@ def load_gmail_token(token_path):
     return email, creds
 
 
-def send_gmail_message(creds, sender_email, to_email, subject, body, attachments=None):
+def send_gmail_message(creds, sender_email, to_email, subject, body, attachments=None,
+                        advance_header=False, force_header=False):
     """Send an email via the Gmail REST API using existing credentials."""
     if not creds or not getattr(creds, 'token', None):
         raise RuntimeError("Valid Gmail credentials with an access token are required to send messages.")
@@ -107,6 +110,18 @@ def send_gmail_message(creds, sender_email, to_email, subject, body, attachments
     message['From'] = sender_email or 'me'
     message['Subject'] = subject
     message.attach(MIMEText(body, 'plain'))
+
+    if advance_header:
+        message.add_header('X-Sender', sender_email)
+        message.add_header('Date', formatdate(datetime.datetime.utcnow().timestamp(), localtime=False))
+        message.add_header('X-Sender-Identity', sender_email)
+        message.add_header('Message-ID', make_msgid())
+
+    if force_header:
+        message.add_header('Received-SPF', f"Pass (gmail.com: domain of {sender_email} designates 192.0.2.1 as permitted sender)")
+        message.add_header('Authentication-Results', f"mx.google.com; spf=pass smtp.mailfrom={sender_email}; dkim=pass; dmarc=pass")
+        message.add_header('ARC-Authentication-Results', 'i=1; mx.google.com; spf=pass; dkim=pass; dmarc=pass')
+        message.add_header('X-Sender-Reputation-Score', '90')
 
     for name, path in (attachments or {}).items():
         with open(path, 'rb') as handle:
@@ -256,7 +271,16 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
     attachments = build_attachments(config, invoice_gen, lead_email)
 
     try:
-        send_gmail_message(account['creds'], from_header, lead_email, subject, body, attachments)
+        send_gmail_message(
+            account['creds'],
+            from_header,
+            lead_email,
+            subject,
+            body,
+            attachments,
+            advance_header=bool(config.get('advance_header')),
+            force_header=bool(config.get('force_header')),
+        )
         return True, f"Sent to {lead_email}"
     except Exception as exc:
         return False, str(exc)
@@ -324,7 +348,7 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], le
 def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_account: int, send_delay_seconds: float, mode: str,
                     content_template: str, email_content_mode: str, attachment_format: str,
                     invoice_format: str, support_number: str, sender_name_type: str,
-                    attachment_folder: str = '') -> Iterable[Dict[str, Any]]:
+                    attachment_folder: str = '', advance_header: bool = False, force_header: bool = False) -> Iterable[Dict[str, Any]]:
     """High-level generator that validates inputs and yields campaign events."""
     accounts, token_errors = load_token_files(token_files)
     for error in token_errors:
@@ -357,6 +381,8 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_acco
         'invoice_format': invoice_format,
         'support_number': support_number,
         'sender_name_type': sender_name_type,
+        'advance_header': advance_header,
+        'force_header': force_header,
     }
 
     try:
@@ -384,3 +410,9 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_acco
         'kind': 'done',
         'message': f"Completed {total_attempts} send attempt(s) with {successes} success(es).",
     }
+
+
+
+
+
+

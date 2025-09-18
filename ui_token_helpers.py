@@ -41,7 +41,7 @@ def _format_progress(event) -> str:
 @ui_error_wrapper
 def start_campaign(token_files, leads_file, leads_per_account, send_delay_seconds, mode,
                    email_content_mode, attachment_folder, invoice_format,
-                   support_number, sender_name_type, content_template):
+                   support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None):
     """Generator used by the Gradio UI button to stream campaign events."""
     log_lines: List[str] = []
     status = "Waiting"
@@ -57,8 +57,7 @@ def start_campaign(token_files, leads_file, leads_per_account, send_delay_second
         email_content_mode=email_content_mode,
         attachment_format='pdf',
         invoice_format=invoice_format,
-        support_number=support_number,
-        sender_name_type=sender_name_type,
+\ \ \ \ \ \ \ \ support_number=support_number,\r\n\ \ \ \ \ \ \ \ advance_header=advance_header,\r\n\ \ \ \ \ \ \ \ force_header=force_header,\r\n\ \ \ \ \ \ \ \ sender_name_type=sender_name_type,
         attachment_folder=attachment_folder,
     )
 
@@ -85,3 +84,8 @@ def start_campaign(token_files, leads_file, leads_per_account, send_delay_second
 
     # Final emit to ensure summary is visible
     yield _build_output(log_lines, status, summary or "Completed")
+
+
+
+
+

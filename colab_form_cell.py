@@ -148,6 +148,8 @@ def _run_campaign_colab():
         attachment_folder=attachment_folder,
         invoice_format=invoice_format,
         support_number=support_number,
+        advance_header=False,
+        force_header=False,
         sender_name_type=sender_name_type,
     )
 
