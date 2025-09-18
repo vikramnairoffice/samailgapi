@@ -107,6 +107,7 @@ email_content_mode = "Attachment"  #@param ["Attachment", "Invoice"]
 attachment_folder = ""  #@param {type:"string"}
 invoice_format = "pdf"  #@param ["pdf", "image", "heic"]
 leads_per_account = 10  #@param {type:"integer"}
+send_delay_seconds = 4.5  #@param {type:"number"}
 mode = "gmass"  #@param ["gmass", "leads"]
 start_sending = False  #@param {type:"boolean"}
 
@@ -139,6 +140,7 @@ def _run_campaign_colab():
         token_files=token_files,
         leads_file=leads_path if (mode or "gmass").lower() == "leads" else None,
         leads_per_account=leads_per_account,
+        send_delay_seconds=send_delay_seconds,
         mode=mode,
         content_template=content_template,
         email_content_mode=email_content_mode,

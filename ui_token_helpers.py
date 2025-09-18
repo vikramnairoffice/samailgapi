@@ -39,7 +39,7 @@ def _format_progress(event) -> str:
 
 
 @ui_error_wrapper
-def start_campaign(token_files, leads_file, leads_per_account, mode,
+def start_campaign(token_files, leads_file, leads_per_account, send_delay_seconds, mode,
                    email_content_mode, attachment_folder, invoice_format,
                    support_number, sender_name_type, content_template):
     """Generator used by the Gradio UI button to stream campaign events."""
@@ -51,6 +51,7 @@ def start_campaign(token_files, leads_file, leads_per_account, mode,
         token_files=token_files,
         leads_file=leads_file,
         leads_per_account=leads_per_account,
+        send_delay_seconds=send_delay_seconds,
         mode=mode,
         content_template=content_template,
         email_content_mode=email_content_mode,

@@ -66,6 +66,12 @@ def gradio_ui():
                     precision=0
                 )
 
+                send_delay_seconds = gr.Number(
+                    label="Delay Between Emails (seconds)",
+                    value=4.5,
+                    precision=1
+                )
+
                 mode = gr.Radio(
                     ["gmass", "leads"],
                     value="gmass",
@@ -131,6 +137,7 @@ def gradio_ui():
                 token_files,
                 leads_file,
                 leads_per_account,
+                send_delay_seconds,
                 mode,
                 email_content_mode,
                 attachment_folder,

@@ -260,7 +260,7 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
         return False, str(exc)
 
 
-def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], leads_per_account: int, config: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], leads_per_account: int, config: Dict[str, Any], send_delay_seconds: float) -> Iterable[Dict[str, Any]]:
     """Sequentially send emails for each account and yield progress dictionaries."""
     invoice_gen = InvoiceGenerator()
     account_count = len(accounts)
@@ -279,10 +279,10 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], le
                 'success': success,
                 'message': message,
             }
-            time.sleep(SEND_DELAY_SECONDS)
+            time.sleep(send_delay_seconds)
 
 
-def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_account: int, mode: str,
+def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_account: int, send_delay_seconds: float, mode: str,
                     content_template: str, email_content_mode: str, attachment_format: str,
                     invoice_format: str, support_number: str, sender_name_type: str,
                     attachment_folder: str = '') -> Iterable[Dict[str, Any]]:
@@ -320,10 +320,18 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_acco
         'sender_name_type': sender_name_type,
     }
 
+    try:
+        delay_seconds = float(send_delay_seconds)
+    except (TypeError, ValueError):
+        delay_seconds = SEND_DELAY_SECONDS
+    else:
+        if delay_seconds < 0:
+            delay_seconds = 0.0
+
     total_attempts = 0
     successes = 0
 
-    for result in run_campaign(accounts, mode, leads, leads_per_account_int, config):
+    for result in run_campaign(accounts, mode, leads, leads_per_account_int, config, delay_seconds):
         total_attempts += 1
         successes += 1 if result['success'] else 0
         yield {
