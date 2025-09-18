@@ -7,6 +7,7 @@ Version 1:
     add manual directory picker for Attachment
     Add Heif support
     Invoice :
+Token profile check
 
 Concept : Using Multiple Instance in Same COlab or Using Link in Muliple tab
 

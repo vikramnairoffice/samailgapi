@@ -1,4 +1,4 @@
-﻿# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -195,7 +195,6 @@ testing/*.json
 gmail_tokens/
 testing & qa/
 qest/
-logos/
 
 # Exclude specified documentation files
 Agent.md

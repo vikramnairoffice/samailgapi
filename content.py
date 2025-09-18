@@ -1033,16 +1033,3 @@ def generate_subject_with_prefix_pattern():
 # Global instance for easy import
 content_manager = ContentManager()
 
-# Test code - remove after verifying
-if __name__ == "__main__":
-    cm = ContentManager()
-    print("Testing Own Proven mode:")
-    for i in range(3):
-        subject, body = cm.get_subject_and_body("own_proven")
-        print(f"Subject: {subject}")
-        print(f"Body: {body}\n")
-    
-    print("\nTesting GMass mode:")
-    for i in range(3):
-        subject, body = cm.get_subject_and_body("gmass_inboxed")
-        print(f"Pattern: {subject}\n")
