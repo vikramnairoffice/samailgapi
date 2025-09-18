@@ -1,5 +1,6 @@
 import random
 import string
+import uuid
 from datetime import datetime
 from faker import Faker
 
@@ -47,6 +48,59 @@ BUSINESS_SUFFIXES = [
     "Corp", "Assoc", "Associazione", "Trust", "Solutions", "Group", "Associa", "Corporation",
     "Trusts", "Corpo", "Inc", "PC", "LLC", "Institutes", "Associates"
 ]
+
+R1_DELIMITER = " | "
+R1_ALPHA_POOL = string.ascii_uppercase + string.digits
+
+
+def _format_r1_date_long(today: datetime) -> str:
+    """Return date like 'June 18 -2025'."""
+    month = today.strftime('%B')
+    return f"{month} {today.day} -{today.year}"
+
+
+def _format_r1_date_numeric(today: datetime) -> str:
+    """Return date like '06/18/2025'."""
+    return today.strftime('%m/%d/%Y')
+
+
+def _random_alphanumeric(length: int) -> str:
+    """Return uppercase alphanumeric string for identifiers."""
+    return ''.join(random.choices(R1_ALPHA_POOL, k=length))
+
+
+def _generate_r1_date(today: datetime) -> str:
+    """Pick between formatted date variants for the R1 Tag."""
+    return random.choice([_format_r1_date_long(today), _format_r1_date_numeric(today)])
+
+
+def _generate_r1_name() -> str:
+    """Pick between standard full name or letter-prefixed variant."""
+    first = fake.first_name()
+    last = fake.last_name()
+    return random.choice([
+        f"{first} {last}",
+        f"{random.choice(string.ascii_uppercase)}{first}{last}",
+    ])
+
+
+def _generate_r1_token() -> str:
+    """Pick between custom INV sequence and a UUID string."""
+    inv_token = 'INV' + _random_alphanumeric(12) + _random_alphanumeric(8) + _random_alphanumeric(6)
+    return random.choice([inv_token, str(uuid.uuid4())])
+
+
+def generate_r1_tag_entry() -> str:
+    """Assemble the R1 Tag content string with randomized order."""
+    today = datetime.now()
+    components = [
+        _generate_r1_date(today),
+        _generate_r1_name(),
+        _generate_r1_token(),
+        random.choice(DEFAULT_SUBJECTS),
+    ]
+    random.shuffle(components)
+    return R1_DELIMITER.join(components)
 
 def generate_business_name():
     """Generate business name: FirstName + RandomLetters + BusinessWord + RandomLetters + Suffix"""
@@ -976,19 +1030,25 @@ class ContentManager:
     
     def get_subject_and_body(self, template_mode="own_proven"):
         """Main function - returns (subject, body) based on template"""
+        mode = (template_mode or "own_proven").lower()
+
+        if mode == "r1_tag":
+            tag_content = generate_r1_tag_entry()
+            return tag_content, tag_content
+
         # Always generate subject using new prefix pattern approach
         subj_info = generate_subject_with_prefix_pattern()
         subject = subj_info["final_subject"]
-        
-        if template_mode == "own_proven":
+
+        if mode == "own_proven":
             body = self._generate_spintax_body()
-        elif template_mode == "gmass_inboxed":
+        elif mode == "gmass_inboxed":
             # Redesigned: subject from defaults, body = part1 + delimiter + bodyB
             body = self._generate_own_content_last_update()
         else:
             # Fallback to proven mode
             body = self._generate_spintax_body()
-        
+
         return subject, body
     
     def _generate_spintax_body(self):

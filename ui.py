@@ -32,6 +32,14 @@ def _describe_attachment_folder(path: str) -> str:
     return f"{len(files)} file(s) detected in {folder}"
 
 
+def _map_content_template(choice: str) -> str:
+    if choice == "Own_last":
+        return "gmass_inboxed"
+    if choice == "R1_Tag":
+        return "r1_tag"
+    return choice
+
+
 def gradio_ui():
     with gr.Blocks(title="Simple Gmail REST Mailer") as demo:
         gr.Markdown("# Simple Gmail REST Mailer")
@@ -79,10 +87,17 @@ def gradio_ui():
                 )
 
             with gr.Column():
-                content_template = gr.Radio(
-                    ["own_proven", "gmass_inboxed"],
+                content_template_choice = gr.Radio(
+                    ["own_proven", "Own_last", "R1_Tag"],
                     value="own_proven",
                     label="Content Template"
+                )
+                content_template_value = gr.State("own_proven")
+
+                content_template_choice.change(
+                    _map_content_template,
+                    inputs=content_template_choice,
+                    outputs=content_template_value
                 )
 
                 sender_name_type = gr.Radio(
@@ -144,7 +159,7 @@ def gradio_ui():
                 invoice_format,
                 support_number,
                 sender_name_type,
-                content_template,
+                content_template_value,
             ],
             outputs=[log_box, status_box, summary_box]
         )

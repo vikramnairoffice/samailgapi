@@ -30,6 +30,10 @@ Verrion 3.1 Additional headers
 Known Issue: Only 1 Smtp is working
 Gmass Mode Keep sending
 Lead Distribution
-
+Multi threading ins't active 
 
 Alternative version: IPywidget
+
+
+Testing Whole system: 
+
