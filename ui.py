@@ -1,6 +1,8 @@
-﻿import gradio as gr
+import os
 
-from mailer import update_attachment_stats, update_file_stats
+import gradio as gr
+
+from mailer import update_file_stats
 from content import SENDER_NAME_TYPES, DEFAULT_SENDER_NAME_TYPE
 from ui_token_helpers import analyze_token_files, start_campaign
 
@@ -9,10 +11,25 @@ def _leads_status(leads_file):
     return update_file_stats([], leads_file)[1]
 
 
-def _refresh_attachment_stats(choice):
-    include_pdfs = choice == 'pdf'
-    include_images = choice == 'image'
-    return update_attachment_stats(include_pdfs, include_images)
+def _describe_attachment_folder(path: str) -> str:
+    if not path:
+        return "No folder selected."
+
+    folder = os.path.abspath(os.path.expanduser(path.strip()))
+    if not os.path.exists(folder):
+        return f"Folder not found: {folder}"
+    if not os.path.isdir(folder):
+        return f"Not a folder: {folder}"
+
+    try:
+        files = [entry.path for entry in os.scandir(folder) if entry.is_file()]
+    except Exception as exc:
+        return f"Folder error: {exc}"
+
+    if not files:
+        return f"No files in {folder}"
+
+    return f"{len(files)} file(s) detected in {folder}"
 
 
 def gradio_ui():
@@ -74,27 +91,27 @@ def gradio_ui():
                     label="Email Content"
                 )
 
-                attachment_format = gr.Radio(
-                    ["pdf", "image"],
-                    value="pdf",
-                    label="Attachment Format"
+                attachment_folder = gr.Textbox(
+                    label="Attachment Folder Path",
+                    placeholder="Paste Drive folder path (e.g. /content/drive/MyDrive/attachments)",
+                    lines=1
                 )
+                attachment_status = gr.Textbox(
+                    label="Attachment Folder Status",
+                    value=_describe_attachment_folder(""),
+                    interactive=False,
+                    lines=2
+                )
+                attachment_folder.change(
+                    _describe_attachment_folder,
+                    inputs=attachment_folder,
+                    outputs=attachment_status
+                )
+
                 invoice_format = gr.Radio(
                     ["pdf", "image", "heic"],
                     value="pdf",
                     label="Invoice Format"
-                )
-
-                attachment_stats = gr.Textbox(
-                    label="Attachment Stats",
-                    value=_refresh_attachment_stats("pdf"),
-                    interactive=False,
-                    lines=2
-                )
-                attachment_format.change(
-                    _refresh_attachment_stats,
-                    inputs=attachment_format,
-                    outputs=attachment_stats
                 )
 
                 support_number = gr.Textbox(
@@ -116,7 +133,7 @@ def gradio_ui():
                 leads_per_account,
                 mode,
                 email_content_mode,
-                attachment_format,
+                attachment_folder,
                 invoice_format,
                 support_number,
                 sender_name_type,

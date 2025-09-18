@@ -1,4 +1,4 @@
-#@title Simple Gmail REST Mailer — Colab Form (Single Cell)
+#@title Simple Gmail REST Mailer - Colab Form (Single Cell)
 # This cell is designed for Google Colab only. It keeps all logic intact
 # and only changes the UI/flow to Colab-native uploads + form parameters.
 
@@ -56,19 +56,40 @@ def _upload_with_filter(accept_exts, dest_dir, description):
     return saved
 
 
-# === Step 1 — Gmail token upload (refresh token JSON files) ===
+def _attachment_folder_status(path: str) -> str:
+    if not path:
+        return "No attachment folder configured."
+
+    folder = os.path.abspath(os.path.expanduser(path.strip()))
+    if not os.path.exists(folder):
+        return f"Folder not found: {folder}"
+    if not os.path.isdir(folder):
+        return f"Not a folder: {folder}"
+
+    try:
+        files = [entry.path for entry in os.scandir(folder) if entry.is_file()]
+    except Exception as exc:
+        return f"Folder error: {exc}"
+
+    if not files:
+        return f"No files in {folder}"
+
+    return f"{len(files)} file(s) detected in {folder}"
+
+
+# === Step 1 - Gmail token upload (refresh token JSON files) ===
 token_files = sorted(glob.glob(os.path.join(TOKEN_DIR, "*.json")))
 if IN_COLAB and not token_files:
-    token_files = _upload_with_filter([".json"], TOKEN_DIR, "Step 1 — Upload Gmail token JSON files")
+    token_files = _upload_with_filter([".json"], TOKEN_DIR, "Step 1 - Upload Gmail token JSON files")
 
 token_status, _ = update_file_stats(token_files, None)
 print(token_status)
 
 
-# === Step 2 — Leads .txt upload ===
+# === Step 2 - Leads .txt upload ===
 leads_path = os.path.join(DATA_DIR, "leads.txt")
 if IN_COLAB and not os.path.exists(leads_path):
-    leads_uploaded = _upload_with_filter([".txt"], DATA_DIR, "Step 2 — Upload leads .txt (one email per line)")
+    leads_uploaded = _upload_with_filter([".txt"], DATA_DIR, "Step 2 - Upload leads .txt (one email per line)")
     if leads_uploaded:
         # Use the first uploaded .txt as leads file
         leads_path = leads_uploaded[0]
@@ -83,7 +104,7 @@ print(_leads_msg)
 content_template = "own_proven"  #@param ["own_proven", "gmass_inboxed"]
 sender_name_type = "business"  #@param ["business", "personal"]
 email_content_mode = "Attachment"  #@param ["Attachment", "Invoice"]
-attachment_format = "pdf"  #@param ["pdf", "image"]
+attachment_folder = ""  #@param {type:"string"}
 invoice_format = "pdf"  #@param ["pdf", "image", "heic"]
 leads_per_account = 10  #@param {type:"integer"}
 mode = "gmass"  #@param ["gmass", "leads"]
@@ -91,6 +112,8 @@ start_sending = False  #@param {type:"boolean"}
 
 # Optional developer field (kept empty by default)
 support_number = ""  # Optional: one or two numbers separated by newline
+
+print(_attachment_folder_status(attachment_folder))
 
 
 def _run_campaign_colab():
@@ -102,6 +125,13 @@ def _run_campaign_colab():
         print("Leads mode selected but no leads file uploaded. Re-run and upload a leads .txt file.")
         return
 
+    folder_hint = (attachment_folder or "").strip()
+    if (email_content_mode or "Attachment").lower() == "attachment":
+        status = _attachment_folder_status(folder_hint)
+        if status.startswith("Folder not found") or status.startswith("Not a folder") or status.startswith("Folder error") or status.startswith("No files"):
+            print(status)
+            return
+
     print("Starting campaign...\n")
 
     # Stream events
@@ -112,7 +142,8 @@ def _run_campaign_colab():
         mode=mode,
         content_template=content_template,
         email_content_mode=email_content_mode,
-        attachment_format=attachment_format,
+        attachment_format='pdf',
+        attachment_folder=attachment_folder,
         invoice_format=invoice_format,
         support_number=support_number,
         sender_name_type=sender_name_type,
@@ -134,9 +165,9 @@ def _run_campaign_colab():
                 account = event.get('account', 'unknown')
                 lead = event.get('lead', 'unknown')
                 if event.get('success'):
-                    print(f"✓ Sent to {lead} using {account} ({successes}/{total})")
+                    print(f"OK Sent to {lead} using {account} ({successes}/{total})")
                 else:
-                    print(f"✗ Failed for {lead} using {account}: {event.get('message')} ({successes}/{total})")
+                    print(f"FAIL for {lead} using {account}: {event.get('message')} ({successes}/{total})")
             elif kind == 'done':
                 print(event.get('message', 'Done'))
             else:
@@ -150,4 +181,3 @@ if start_sending:
     _run_campaign_colab()
 else:
     print("Ready. Set parameters and enable 'start_sending' to run.")
-

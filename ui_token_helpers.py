@@ -1,4 +1,4 @@
-﻿"""Simple helpers connecting the Gradio UI to the Gmail REST mailer."""
+"""Simple helpers connecting the Gradio UI to the Gmail REST mailer."""
 
 import traceback
 from typing import Iterable, List, Tuple
@@ -34,13 +34,13 @@ def _format_progress(event) -> str:
     account = event.get('account', 'unknown')
     lead = event.get('lead', 'unknown')
     if event.get('success'):
-        return f"✔ Sent to {lead} using {account}"
-    return f"✖ Failed for {lead} using {account}: {event.get('message')}"
+        return f"OK Sent to {lead} using {account}"
+    return f"FAIL for {lead} using {account}: {event.get('message')}"
 
 
 @ui_error_wrapper
 def start_campaign(token_files, leads_file, leads_per_account, mode,
-                   email_content_mode, attachment_format, invoice_format,
+                   email_content_mode, attachment_folder, invoice_format,
                    support_number, sender_name_type, content_template):
     """Generator used by the Gradio UI button to stream campaign events."""
     log_lines: List[str] = []
@@ -54,10 +54,11 @@ def start_campaign(token_files, leads_file, leads_per_account, mode,
         mode=mode,
         content_template=content_template,
         email_content_mode=email_content_mode,
-        attachment_format=attachment_format,
+        attachment_format='pdf',
         invoice_format=invoice_format,
         support_number=support_number,
         sender_name_type=sender_name_type,
+        attachment_folder=attachment_folder,
     )
 
     for event in events:

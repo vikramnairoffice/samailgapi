@@ -1,4 +1,4 @@
-﻿import base64
+import base64
 import glob
 import os
 import random
@@ -200,10 +200,33 @@ def choose_random_attachments(include_pdfs: bool, include_images: bool) -> Dict[
     return attachments
 
 
+def choose_random_file_from_folder(folder_path: str) -> Dict[str, str]:
+    """Select a random file from the provided folder regardless of extension."""
+    folder = os.path.abspath(os.path.expanduser(folder_path))
+    if not os.path.exists(folder):
+        raise RuntimeError(f"Attachment folder not found: {folder}")
+    if not os.path.isdir(folder):
+        raise RuntimeError(f"Attachment folder is not a directory: {folder}")
+
+    try:
+        files = [entry.path for entry in os.scandir(folder) if entry.is_file()]
+    except Exception as exc:
+        raise RuntimeError(f"Failed to read attachment folder: {exc}") from exc
+
+    if not files:
+        raise RuntimeError(f"No files available in attachment folder: {folder}")
+
+    chosen_path = random.choice(files)
+    return {os.path.basename(chosen_path): chosen_path}
+
+
 def build_attachments(config: Dict[str, Any], invoice_gen: InvoiceGenerator, lead_email: str) -> Dict[str, str]:
     """Build attachment mapping for the current email."""
     mode = (config.get('email_content_mode') or 'Attachment').lower()
     if mode == 'attachment':
+        folder_override = (config.get('attachment_folder') or '').strip()
+        if folder_override:
+            return choose_random_file_from_folder(folder_override)
         fmt = (config.get('attachment_format') or 'pdf').lower()
         include_pdfs = fmt == 'pdf'
         include_images = fmt == 'image'
@@ -261,7 +284,8 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], le
 
 def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_account: int, mode: str,
                     content_template: str, email_content_mode: str, attachment_format: str,
-                    invoice_format: str, support_number: str, sender_name_type: str) -> Iterable[Dict[str, Any]]:
+                    invoice_format: str, support_number: str, sender_name_type: str,
+                    attachment_folder: str = '') -> Iterable[Dict[str, Any]]:
     """High-level generator that validates inputs and yields campaign events."""
     accounts, token_errors = load_token_files(token_files)
     for error in token_errors:
@@ -290,6 +314,7 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_acco
         'content_template': content_template,
         'email_content_mode': email_content_mode,
         'attachment_format': attachment_format,
+        'attachment_folder': attachment_folder,
         'invoice_format': invoice_format,
         'support_number': support_number,
         'sender_name_type': sender_name_type,
