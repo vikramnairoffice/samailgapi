@@ -27,7 +27,7 @@ This project is a web-based, single-user email sending application designed for 
     - It also includes logic for generating dynamic sender names.
 
 - **`invoice.py` (Attachment Generator):** Generates personalized attachments.
-    - It can create styled invoices in PDF, PNG, or HEIC format.
+    - It can create styled invoices in PDF, PNG, or HEIF format.
     - It personalizes invoices with recipient-specific data and can include a random logo and user-provided support numbers.
 
 ## Data Flow

@@ -27,12 +27,12 @@ except ImportError:
 try:
     from PIL import Image
     import pillow_heif
-    # Enable HEIF/HEIC support in Pillow
+    # Enable HEIF support in Pillow
     pillow_heif.register_heif_opener()
-    HEIC_AVAILABLE = True
+    HEIF_AVAILABLE = True
 except ImportError:
-    print("HEIC support not available. Install with: pip install pillow-heif pillow")
-    HEIC_AVAILABLE = False
+    print("HEIF support not available. Install with: pip install pillow-heif pillow")
+    HEIF_AVAILABLE = False
 
 class InvoiceGenerator:
     def __init__(self):
@@ -69,14 +69,14 @@ class InvoiceGenerator:
             print(f"Error converting PDF to image: {e}")
             return False
 
-    def convert_pdf_to_heic(self, pdf_path, output_path, dpi=135):
-        """Convert PDF to HEIC format using PyMuPDF and Pillow"""
-        if not HEIC_AVAILABLE:
-            print("HEIC support not available. Please install: pip install pillow-heif pillow")
+    def convert_pdf_to_heif(self, pdf_path, output_path, dpi=135):
+        """Convert PDF to HEIF format using PyMuPDF and Pillow"""
+        if not HEIF_AVAILABLE:
+            print("HEIF support not available. Please install: pip install pillow-heif pillow")
             return False
             
         if not PYMUPDF_AVAILABLE:
-            print("Error: PyMuPDF not available. Cannot convert PDF to HEIC.")
+            print("Error: PyMuPDF not available. Cannot convert PDF to HEIF.")
             return False
             
         try:
@@ -90,13 +90,13 @@ class InvoiceGenerator:
             img_data = pix.tobytes("png")
             img = Image.open(io.BytesIO(img_data))
             
-            # Save as HEIC
+            # Save as HEIF
             img.save(output_path, format="HEIF")
             doc.close()
-            print(f"Converted to HEIC: {output_path}")
+            print(f"Converted to HEIF: {output_path}")
             return True
         except Exception as e:
-            print(f"Error converting PDF to HEIC: {e}")
+            print(f"Error converting PDF to HEIF: {e}")
             return False
 
     def get_random_logo(self):
@@ -408,15 +408,15 @@ class InvoiceGenerator:
         temp_dir = tempfile.gettempdir()
         pdf_path = os.path.join(temp_dir, f"{filename_base}.pdf")
         image_path = os.path.join(temp_dir, f"{filename_base}.png")
-        heic_path = os.path.join(temp_dir, f"{filename_base}.heic")
+        heif_path = os.path.join(temp_dir, f"{filename_base}.heif")
         
         self.create_pdf(pdf_path)
         
         if output_format == "pdf":
             return pdf_path
-        elif output_format == "heic":
-            self.convert_pdf_to_heic(pdf_path, heic_path)
-            return heic_path
+        elif output_format == "heif":
+            self.convert_pdf_to_heif(pdf_path, heif_path)
+            return heif_path
         else:  # default to image/png
             self.convert_pdf_to_image(pdf_path, image_path)
             return image_path

@@ -15,11 +15,11 @@ This document enumerates all public and helper functions/classes by module.
 ## `invoice.py`
 - **`class InvoiceGenerator`**:
     - `convert_pdf_to_image(pdf_path, output_path, dpi)`: Converts a PDF file to a PNG image.
-    - `convert_pdf_to_heic(pdf_path, output_path, dpi)`: Converts a PDF file to a HEIC image.
+    - `convert_pdf_to_heif(pdf_path, output_path, dpi)`: Converts a PDF file to a HEIF image.
     - `get_random_logo()`: Selects a random logo from the `logos/` directory.
     - `generate_invoice_data()`: Creates a dictionary of randomized data for an invoice.
     - `create_pdf(filename)`: Generates and saves a styled PDF invoice.
-    - `generate_for_recipient(recipient_email, phone_numbers_input, output_format)`: The main method to generate a personalized invoice for a specific recipient in the desired format (PDF, PNG, or HEIC).
+    - `generate_for_recipient(recipient_email, phone_numbers_input, output_format)`: The main method to generate a personalized invoice for a specific recipient in the desired format (PDF, PNG, or HEIF).
 
 ## `mailer.py`
 - **`update_file_stats(token_files, leads_file)`**: Returns status strings for the uploaded token and lead files.

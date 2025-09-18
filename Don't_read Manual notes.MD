@@ -1,8 +1,7 @@
 Version 1:
     Mailr
     Tasks: 1. Adding additional Contnet in invoice
-    Task 2. Set it up so that it works easily with google colab
-    Taks 3. Push it with google colab
+
     Attachment picker
     add manual directory picker for Attachment
     Add Heif support
@@ -27,10 +26,6 @@ Version 3: Add Industry Standard Subject and Body as spintax
 Verrion 3.1 Additional headers
 
 
-Known Issue: Only 1 Smtp is working
-Gmass Mode Keep sending
-Lead Distribution
-Multi threading ins't active 
 
 Alternative version: IPywidget
 

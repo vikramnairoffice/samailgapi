@@ -130,7 +130,7 @@ def gradio_ui():
                 )
 
                 invoice_format = gr.Radio(
-                    ["pdf", "image", "heic"],
+                    ["pdf", "image", "heif"],
                     value="pdf",
                     label="Invoice Format"
                 )

@@ -9,7 +9,7 @@
 - **Dynamic Sender Names**: Generates sender names in "business" or "personal" style.
 - **Attachments**: 
     - **Static**: Randomly attaches a PDF or image from local `./pdfs` or `./images` directories.
-    - **Personalized Invoices**: Generates personalized invoices on-the-fly in PDF, PNG, or HEIC format.
+    - **Personalized Invoices**: Generates personalized invoices on-the-fly in PDF, PNG, or HEIF format.
 - **Gmail API Integration**: 
     - Loads and validates Gmail token files.
     - Refreshes expired tokens automatically.
@@ -35,7 +35,7 @@
 - **Invoice Generation**: 
   - If "Invoice" mode is selected, it generates a personalized invoice for each recipient.
   - Invoices are highly customizable, including a random logo from the `./logos` directory, company details, and recipient-specific information.
-  - Supports output in PDF, PNG, or HEIC formats.
+  - Supports output in PDF, PNG, or HEIF formats.
   - Can include support phone numbers provided by the user.
 
 ## UI Features

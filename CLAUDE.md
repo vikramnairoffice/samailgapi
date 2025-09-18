@@ -34,7 +34,7 @@ A completely overhauled Python-based email marketing application focused on Gmai
    - PDF to image conversion support with PyMuPDF (135 DPI)
    - Support for multiple phone numbers and business types
    - Local logos directory functionality for custom branding
-   - HEIF/HEIC image format support via pillow_heif
+   - HEIF image format support via pillow_heif
    - Comprehensive error handling with graceful fallbacks
 
 3. **Content Management System** (`content.py`)
