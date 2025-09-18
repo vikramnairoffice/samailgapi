@@ -2,6 +2,7 @@ import os
 import random
 import tempfile
 import io
+from pathlib import Path
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -100,28 +101,44 @@ class InvoiceGenerator:
             return False
 
     def get_random_logo(self):
-        """Get random logo from local logos directory"""
-        import glob
-        import os
-        
-        LOGO_DIR = "logos"  # Local directory in project root
-        
-        # Create directory if it doesn't exist
-        if not os.path.exists(LOGO_DIR):
-            os.makedirs(LOGO_DIR, exist_ok=True)
-            return None  # No logos yet
-        
-        # Find all image files in logos directory
-        logo_files = (glob.glob(os.path.join(LOGO_DIR, "*.png")) + 
-                      glob.glob(os.path.join(LOGO_DIR, "*.jpg")) + 
-                      glob.glob(os.path.join(LOGO_DIR, "*.jpeg")))
-        
-        if logo_files:
-            selected_logo = random.choice(logo_files)
-            print(f"Selected logo: {selected_logo}")  # Debug print
-            return selected_logo
-        
-        print("No logos found in logos directory")  # Debug print
+        """Get random logo from well-known asset directories."""
+        search_dirs = []
+
+        env_dir = os.environ.get("SIMPLE_MAILER_LOGO_DIR")
+        if env_dir:
+            search_dirs.append(Path(env_dir).expanduser())
+
+        module_dir = Path(__file__).resolve().parent
+        search_dirs.append(module_dir / "logos")
+        search_dirs.append(Path.cwd() / "logos")
+
+        unique_dirs = []
+        seen = set()
+        for directory in search_dirs:
+            if directory is None:
+                continue
+            try:
+                resolved = directory.resolve()
+            except FileNotFoundError:
+                resolved = directory
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            unique_dirs.append(resolved)
+
+        candidates = []
+        for directory in unique_dirs:
+            if not directory.exists():
+                continue
+            for pattern in ("*.png", "*.jpg", "*.jpeg"):
+                candidates.extend(list(directory.glob(pattern)))
+
+        if candidates:
+            selected_logo = random.choice(candidates)
+            print(f"Selected logo: {selected_logo}")
+            return str(selected_logo)
+
+        print("No logos found in available directories")
         return None
 
     def generate_company_name(self):
