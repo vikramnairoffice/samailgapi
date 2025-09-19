@@ -53,8 +53,8 @@ BUSINESS_SUFFIXES = [
     "Trusts", "Corpo", "Inc", "PC", "LLC", "Institutes", "Associates"
 ]
 
-R1_DELIMITER = " | "
 R1_ALPHA_POOL = string.ascii_uppercase + string.digits
+R1_SYMBOL_CHOICES = ["|", ":", "-", "~", "/"]
 
 
 TagContext = Optional[Mapping[str, str]]
@@ -428,8 +428,13 @@ def generate_r1_tag_entry(tag_context: TagContext = None) -> str:
         generate_tag_value(random.choice(R1_STRING_TAGS), tag_context),
     ]
     random.shuffle(core_parts)
+
+    symbol = random.choice(R1_SYMBOL_CHOICES)
+    insert_position = random.randint(1, len(core_parts) - 1)
+    core_parts.insert(insert_position, symbol)
+
     components.extend(core_parts)
-    return R1_DELIMITER.join(components)
+    return " ".join(components)
 
 
 def generate_business_name():
