@@ -23,6 +23,106 @@ REMOTE_LOGO_URLS = [
 
 REMOTE_LOGO_CACHE_DIR = Path(tempfile.gettempdir()) / "simple_mailer_remote_logos"
 
+PRODUCT_BUNDLES = [
+    {
+        "brand": "Microsoft Office",
+        "primary": [
+            "Microsoft Office Total Security",
+            "Microsoft Office Internet Security",
+            "Microsoft Office Antivirus Plus",
+            "Microsoft Office Antivirus",
+        ],
+        "secondary": [
+            "MS Office Account",
+            "MS Office ",
+            "MS Office Browsing",
+            "MS Office Plus",
+            "MS Office Premium",
+            "MS Office Ultimate",
+            "MS Office Pro",
+        ],
+    },
+    {
+        "brand": "Zoom",
+        "primary": [
+            "Zoom Total Security",
+            "Zoom Internet Security",
+            "Zoom Antivirus Plus",
+            "Zoom Antivirus",
+        ],
+        "secondary": [
+            "Zoom Account",
+            "Zoom ",
+            "Zoom Browsing",
+            "Zoom Plus",
+            "Zoom Premium",
+            "Zoom Ultimate",
+            "Zoom Pro",
+        ],
+    },
+    {
+        "brand": "Windows Defender",
+        "primary": [
+            "Windows Defender Total Security",
+            "Windows Defender Internet Security",
+            "Windows Defender Antivirus Plus",
+            "Windows Defender Antivirus",
+        ],
+        "secondary": [
+            "Windows Defender Account",
+            "Windows Defender",
+            "Windows Defender Browsing",
+            "Windows Defender Plus",
+            "Windows Defender Premium",
+            "Windows Defender Ultimate",
+            "Windows Defender Pro",
+        ],
+    },
+    {
+        "brand": "Oracle Office",
+        "primary": [
+            "Oracle Office Total Security",
+            "Oracle Office Internet Security",
+            "Oracle Office Antivirus Plus",
+            "Oracle Office Antivirus",
+        ],
+        "secondary": [
+            "Oracle Office Account",
+            "Oracle Office ",
+            "Oracle Office Browsing",
+            "Oracle Office Plus",
+            "Oracle Office Premium",
+            "Oracle Office Ultimate",
+            "Oracle Office Pro",
+        ],
+    },
+]
+
+SECONDARY_SUFFIXES = [
+    "Complimentary Plus",
+    "Premium Package",
+    "Package 2023",
+    "Combo",
+    "Premium Support",
+]
+
+PRODUCT_DESCRIPTION_CHOICES = [
+    "2 Years 5 Devices",
+    "1 Year 10 Devices",
+    "5 Years Subscription",
+    "3 Years 4 Devices",
+    "1 Year 1 Device",
+    "5 Years 5 Devices",
+    "All Premium Features Included",
+    "Complimentary Plus",
+    "Premium Package",
+    "Package 2023",
+    "Combo",
+    "Premium Support",
+    "Premium Activation",
+    "Premium Features",
+    "Instant Activation",
+]
 try:
     from faker import Faker
     fake = Faker('en_US')
@@ -181,9 +281,18 @@ class InvoiceGenerator:
         date = datetime.now().strftime("%d %b %Y")
         invoice_number = random.randint(100000, 999999)
 
+        bundle = random.choice(PRODUCT_BUNDLES)
+        primary_name = random.choice(bundle["primary"])
+        secondary_options = [name.strip() for name in bundle["secondary"] if name.strip()]
+        secondary_options.extend(
+            f"{bundle['brand']} {suffix}".strip() for suffix in SECONDARY_SUFFIXES
+        )
+        secondary_options = list(dict.fromkeys(secondary_options))
+        secondary_name = random.choice(secondary_options)
+
         items = [
-            {"name": "Zoom Antivirus", "description": "3 Years 4 Devices"},
-            {"name": "Zoom Complimentary Plus", "description": "Premium Support"}
+            {"name": primary_name, "description": random.choice(PRODUCT_DESCRIPTION_CHOICES)},
+            {"name": secondary_name, "description": random.choice(PRODUCT_DESCRIPTION_CHOICES)}
         ]
 
         total_target = random.uniform(399, 799)
@@ -869,3 +978,4 @@ class InvoiceGenerator:
         else:  # default to image/png
             self.convert_pdf_to_image(pdf_path, image_path)
             return image_path
+

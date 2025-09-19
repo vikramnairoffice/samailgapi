@@ -3,26 +3,34 @@ Version 1:
     Tasks: 1. Adding additional Contnet in invoice
 
     Invoice :
+    Fix notes With Better Implimentation
+    Add Product 
+    Add Remaining logo to imgur 
 
-
-
-Concept : Using Multiple Instance in Same COlab or Using Link in Muliple tab
+Leads Deletation after sending
+Caching Issue as it's causing
+Multi threading logic and implimentation 
 
 
 Testing V1. 1. Completely working entire System
 
-Version 2
-    Move Logo to selection to image picker
-Simple better error Handling system
-Leads Deletation after sending
-Testing V2. 1 Inboxing wiht 0 second delay
-
-Version 3: Add Industry Standard Subject and Body as spintax
-
-Alternative version: IPywidget
 
 Testing Whole system: 
 creeating a list and testing all features
- Logos are not working from Github 
- inboxing with 0 delay 
+ inboxing with 0 delay - Not worknig at all instant Id got deleted 
+ All incoding are 
 
+
+Implimenting indiepdent body selection R1 and Own
+Adding bm2ultra mailer headers
+Preview of heif ins't aligned in R1 Tag
+
+
+Test pending 
+1 Thread full with R1 Tags 
+1 Thread full with R1 tags + R1 Headers Advance Header
+1 Thread full with Advance + Force 
+1 With Own content 
+1 With Own Cotnet + R1 Tag + R1 Advance Head 
+1 With Own Content + R1 Tag + R1 Advance Head + Force
+5 For Multi threading Among The best performing above
