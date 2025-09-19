@@ -11,7 +11,7 @@ from faker import Faker
 fake = Faker()
 
 DEFAULT_SUBJECTS = [
-    "Notice", "Confirmation", "Alert Release", "New Update Confirmation", "Thank you for contribution", "Thanks for your interest", "Maintenance Invoice", "Maintenance Confirmation", "Immediately notify", "Alert", "Update", "Hello", "Thank You", "Thanks", "Thanks Again", "Notify", "Notification", "Alert Update", "Renewal", "Subscription", "Activation", "Purchase Report", "New Receipt", "Modification in Receipt", "Modification in Invoice", "Thanks for your order", "Thanks for your confirmation of renewal", "Thanks for transaction", "New transaction found", "Renewal Transaction Update", "Transaction Notification", "Transaction success Alert", "Transaction Activation Update", "Transaction Subscription Notify", "Invoice Update", "Document Ready", "Order Status"
+    "Notice", "Confirmation", "Alert Release", "New Update Purchase", "New Update Confirmation", "Thank you for contribution", "Thanks for your interest", "Maintenance Invoice", "Purchase Notification", "Maintenance Confirmation", "Purchase Confirmation", "Purchase Invoice", "Immediately notify", "Alert", "Update", "Hello", "Thank You", "Thanks", "Thanks Again", "Notify", "Notification", "Alert Update", "Renewal", "Subscription", "Activation", "Purchase Report", "Purchase Receipt", "New Receipt", "Modification in Receipt", "Modification in Invoice", "Thanks for your order", "Thanks for your Purchase", "Thanks for your confirmation of renewal", "Thanks for transaction", "New transaction found", "Renewal Transaction Update", "Transaction Notification", "Transaction success Alert", "Transaction Activation Update", "Transaction Subscription Notify", "Purchase Confirmation", "Invoice Update", "Document Ready", "Order Status"
 ]
 
 DEFAULT_BODIES = [
@@ -352,9 +352,9 @@ def generate_tag_value(tag_name: str, context: TagContext = None) -> str:
 
 R1_PREFIX_CHOICES = ["Automatic", "Automated", "FWD", "FWD.", "FWD:"]
 R1_KEYWORD_CHOICES = [
-    "Auotmaitc",
+    "Automatic",
     "Debit",
-    "Delivery",
+    "Delievery",
     "Deposit",
     "Details",
     "Project",
@@ -362,21 +362,41 @@ R1_KEYWORD_CHOICES = [
     "Ticket",
     "Recipet",
     "Refund",
-    "Registered",
-    "Re-Rrint",
+    "Resgiesterd",
+    "Re-Print",
     "Receipt",
     "Registrations",
-    "Reimbursement",
+    "Reimbuersement",
     "Reminder",
     "Renewal",
     "Reply",
     "Report",
-    "Rerserach",
+    "Research",
     "Reservation",
     "Snapshot",
     "Subscription",
     "Updated",
     "Paid",
+    "Log",
+    "Inovice",
+    "Billing",
+    "Alert",
+    "Slip",
+    "Statement",
+    "System",
+    "Trasnction",
+    "Access",
+    "Conference",
+    "Confirmation",
+    "Digital",
+    "Generated",
+    "Print",
+    "Record",
+    "Deliver",
+    "Upgrade",
+    "Service",
+    "Upload",
+    "Important",
 ]
 R1_NAME_TAGS = ["#NAME#", "#FNAME#", "#UNAME#"]
 R1_DATE_TAGS = ["#DATE#", "#DATE1#", "#DATETIME#"]
