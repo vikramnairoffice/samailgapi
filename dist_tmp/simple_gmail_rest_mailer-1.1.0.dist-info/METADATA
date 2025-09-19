@@ -1,0 +1,133 @@
+Metadata-Version: 2.4
+Name: simple-gmail-rest-mailer
+Version: 1.1.0
+Summary: Token-based Gmail REST mailer with personalized invoices and Colab support.
+Home-page: https://github.com/vikramnairoffice/simple-gmail-rest-mailer
+Author: Vikram Nair
+Author-email: vikramnairoffice@gmail.com
+Project-URL: Bug Reports, https://github.com/vikramnairoffice/simple-gmail-rest-mailer/issues
+Project-URL: Source, https://github.com/vikramnairoffice/simple-gmail-rest-mailer
+Project-URL: Documentation, https://github.com/vikramnairoffice/simple-gmail-rest-mailer/blob/main/README.md
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Communications :: Email
+Classifier: Topic :: Office/Business :: Financial :: Accounting
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Requires-Dist: gradio>=3.0.0
+Requires-Dist: reportlab>=3.6.0
+Requires-Dist: pymupdf>=1.20.0
+Requires-Dist: faker>=15.0.0
+Requires-Dist: google-auth>=2.0.0
+Requires-Dist: requests>=2.25.0
+Requires-Dist: Pillow>=8.0.0
+Requires-Dist: pillow-heif>=0.9.0
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=2.10.0; extra == "dev"
+Requires-Dist: black>=21.0.0; extra == "dev"
+Requires-Dist: flake8>=3.8.0; extra == "dev"
+Provides-Extra: colab
+Requires-Dist: ipython>=7.0.0; extra == "colab"
+Requires-Dist: jupyter>=1.0.0; extra == "colab"
+Requires-Dist: google-auth-oauthlib>=0.8.0; extra == "colab"
+Requires-Dist: google-api-python-client>=2.70.0; extra == "colab"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: project-url
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Simple Gmail REST Mailer
+
+Token-first Gmail sender with a Gradio dashboard, personalized invoice generation, and a Colab-friendly workflow. Upload OAuth token JSON files, tune email content, and monitor progress from the browser or a notebook.
+
+## Highlights
+- **Gmail REST only** - no SMTP passwords; each token is verified via the Gmail profile endpoint before sends.
+- **Colab bootstrap helper** - run `colab_setup` to prep a notebook and launch the Gradio UI.
+- **Invoice/attachment workflow** - generate PDFs/HEIF images on the fly or re-use assets stored under `pdfs/`, `images/`, and `logos/`.
+- **Seed + leads modes** - blast the bundled GMass seed list or distribute uploaded leads across accounts.
+- **Console entry point** - install the package and launch the Gradio UI with `simple-mailer`.
+
+## Installation
+
+### Install from source
+```bash
+# clone or download the repository, then
+pip install -r requirements.txt
+python ui.py
+```
+
+### Pip install the Git repo
+Once the project is published to GitHub, a single command installs the package and its runtime dependencies:
+```bash
+pip install -q -U git+https://github.com/<owner>/<repo>.git@main
+```
+Replace `<owner>/<repo>` with the repository slug. For private repos, include a PAT: `https://<token>@github.com/...`.
+
+After installation you can:
+```python
+from mailer import campaign_events
+from ui import main  # launches the Gradio dashboard
+```
+
+## Google Colab quick start
+
+1. **Install the package**
+   ```python
+   # Cell 1 - install from GitHub
+   !pip install -q -U git+https://github.com/<owner>/<repo>.git@main
+   ```
+2. **Launch a UI**
+   - Option A - run the packaged Gradio app:
+     ```python
+     from ui import main
+     main()  # opens Gradio in Colab output
+     ```
+   - Option B - call the bootstrap helper:
+     ```python
+     import colab_setup
+     colab_setup.install_packages()
+     colab_setup.create_directories()
+     colab_setup.launch_app()
+     ```
+     This installs notebook extras (`google-auth-oauthlib`, `google-api-python-client`), prepares `gmail_tokens/`, `pdfs/`, `images/`, and launches the UI.
+
+## Gmail token requirements
+- Generate OAuth2 refresh tokens with scope `https://mail.google.com/` (e.g., via Google Cloud Console or OAuth playground).
+- Each token JSON must include `client_id`, `client_secret`, and `refresh_token`.
+- Store tokens under `gmail_tokens/` locally or upload them in Colab. The app refreshes and validates every token before sending.
+
+## Project layout
+```
+ui.py               # Gradio dashboard
+ui_token_helpers.py # Bridges UI events to the mailer generator
+mailer.py           # Gmail REST workflow + token/lead orchestration
+invoice.py          # Invoice generator (PDF, PNG, HEIF)
+content.py          # Subject/body templates and sender name helpers
+colab_setup.py      # Bootstrap helper for Colab/notebook runs
+requirements.txt    # Runtime dependencies
+setup.py            # Packaging configuration
+```
+
+## Development tips
+- `python colab_setup.py` on a workstation installs notebook extras and launches the UI.
+- Use the console script after installation: `simple-mailer`.
+- Keep runtime assets (logos, prebuilt attachments, tokens) out of version control; they are covered in `.gitignore`.
+
+## License
+MIT - for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.

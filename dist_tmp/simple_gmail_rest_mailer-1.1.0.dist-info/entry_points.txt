@@ -1,0 +1,2 @@
+[console_scripts]
+simple-mailer = ui:main
