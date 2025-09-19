@@ -5,12 +5,12 @@ import requests
 from typing import Iterable, List, Tuple
 from urllib.parse import quote
 
-from mailer import campaign_events, update_file_stats, load_token_files
+from mailer import campaign_events, update_file_stats, load_accounts, fetch_mailbox_totals_app_password
 
 
-def analyze_token_files(token_files) -> str:
-    """Return a short status string for uploaded Gmail token files."""
-    token_msg, _ = update_file_stats(token_files, None)
+def analyze_token_files(token_files, auth_mode: str = 'oauth') -> str:
+    """Return a short status string for uploaded credential files."""
+    token_msg, _ = update_file_stats(token_files, None, auth_mode=auth_mode)
     return token_msg
 
 
@@ -40,12 +40,12 @@ def _format_progress(event) -> str:
     return f"FAIL for {lead} using {account}: {event.get('message')}"
 
 
-def build_gmass_preview(mode, token_files) -> Tuple[str, List[List[str]]]:
+def build_gmass_preview(mode, token_files, auth_mode: str = 'oauth') -> Tuple[str, List[List[str]]]:
     """Return status text and table rows for the GMass preview panel."""
     if (mode or '').lower() != 'gmass':
-        return "", []
+        return '', []
 
-    accounts, _ = load_token_files(token_files)
+    accounts, _ = load_accounts(token_files, auth_mode=auth_mode)
     emails = [account.get('email') for account in accounts if account.get('email')]
 
     if not emails:
@@ -59,7 +59,6 @@ def build_gmass_preview(mode, token_files) -> Tuple[str, List[List[str]]]:
 
     status = f"Completed! Check {len(table)} GMass URLs."
     return status, table
-
 
 def gmass_rows_to_markdown(rows: List[List[str]]) -> str:
     """Convert GMass preview rows into Markdown with clickable links."""
@@ -117,17 +116,21 @@ def mailbox_rows_to_markdown(rows: List[Tuple[str, int, int]]) -> str:
     return "\\n".join(lines)
 
 
-def fetch_mailbox_counts(token_files) -> Tuple[str, str]:
-    accounts, token_errors = load_token_files(token_files)
+def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth') -> Tuple[str, str]:
+    accounts, token_errors = load_accounts(token_files, auth_mode=auth_mode)
     rows: List[Tuple[str, int, int]] = []
     issues: List[str] = list(token_errors)
 
     for account in accounts:
-        email = account.get('email') or account.get('path') or 'Unknown token'
-        creds = account.get('creds')
+        email = account.get('email') or account.get('path') or 'Unknown credential'
+        auth_type = (account.get('auth_type') or 'oauth').lower()
         try:
-            inbox_total = _fetch_label_total(creds, 'INBOX')
-            sent_total = _fetch_label_total(creds, 'SENT')
+            if auth_type in {'app_password', 'app-password', 'app password'}:
+                inbox_total, sent_total = fetch_mailbox_totals_app_password(account['email'], account['password'])
+            else:
+                creds = account.get('creds')
+                inbox_total = _fetch_label_total(creds, 'INBOX')
+                sent_total = _fetch_label_total(creds, 'SENT')
         except Exception as exc:
             issues.append(f"{email}: {exc}")
             continue
@@ -136,9 +139,9 @@ def fetch_mailbox_counts(token_files) -> Tuple[str, str]:
     if rows:
         status = f"Mailbox counts ready for {len(rows)} account(s)."
     elif accounts:
-        status = "Failed to collect mailbox counts for uploaded tokens."
+        status = "Failed to collect mailbox counts for uploaded credentials."
     else:
-        status = "No Gmail token files available."
+        status = "No Gmail credential files available."
 
     if issues:
         status += f" Issues: {'; '.join(issues)}"
@@ -146,17 +149,17 @@ def fetch_mailbox_counts(token_files) -> Tuple[str, str]:
     markdown = mailbox_rows_to_markdown(rows)
     return status, markdown
 
-
 @ui_error_wrapper
 def start_campaign(token_files, leads_file, leads_per_account, send_delay_seconds, mode,
                    email_content_mode, attachment_folder, invoice_format,
-                   support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None):
+                   support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None,
+                   auth_mode: str = 'oauth'):
     """Generator used by the Gradio UI button to stream campaign events."""
     log_lines: List[str] = []
     status = "Waiting"
     summary = ""
 
-    gmass_status, gmass_rows = build_gmass_preview(mode, token_files)
+    gmass_status, gmass_rows = build_gmass_preview(mode, token_files, auth_mode=auth_mode)
     if gmass_status == "" and gmass_rows:
         # Defensive guard: avoid mismatched state
         gmass_rows = []
@@ -177,6 +180,7 @@ def start_campaign(token_files, leads_file, leads_per_account, send_delay_second
         force_header=force_header,
         sender_name_type=sender_name_type,
         attachment_folder=attachment_folder,
+        auth_mode=auth_mode,
     )
 
     mode_lower = (mode or '').lower()

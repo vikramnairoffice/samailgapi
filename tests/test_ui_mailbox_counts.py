@@ -23,7 +23,7 @@ def test_mailbox_counts_preview_success(monkeypatch):
         }
     ]
 
-    monkeypatch.setattr(helpers, 'load_token_files', lambda files: (accounts, []))
+    monkeypatch.setattr(helpers, 'load_accounts', lambda files, auth_mode='oauth': (accounts, []))
 
     calls = []
 
@@ -49,11 +49,11 @@ def test_mailbox_counts_preview_success(monkeypatch):
 
 
 def test_mailbox_counts_handles_token_errors(monkeypatch):
-    monkeypatch.setattr(helpers, 'load_token_files', lambda files: ([], ['broken token']))
+    monkeypatch.setattr(helpers, 'load_accounts', lambda files, auth_mode='oauth': ([], ['broken token']))
 
     status, markdown = helpers.fetch_mailbox_counts(['missing.json'])
 
-    assert status == 'No Gmail token files available. Issues: broken token'
+    assert status == 'No Gmail credential files available. Issues: broken token'
     assert markdown == ''
 
 
@@ -66,7 +66,7 @@ def test_mailbox_counts_reports_fetch_failure(monkeypatch):
         }
     ]
 
-    monkeypatch.setattr(helpers, 'load_token_files', lambda files: (accounts, []))
+    monkeypatch.setattr(helpers, 'load_accounts', lambda files, auth_mode='oauth': (accounts, []))
 
     def fake_get(url, headers, timeout):
         return FakeResponse(status_code=500, payload={}, text='boom')
@@ -76,7 +76,7 @@ def test_mailbox_counts_reports_fetch_failure(monkeypatch):
     status, markdown = helpers.fetch_mailbox_counts(['first.json'])
 
     assert status == (
-        'Failed to collect mailbox counts for uploaded tokens. '
+        'Failed to collect mailbox counts for uploaded credentials. '
         'Issues: first@example.com: Gmail label fetch failed (INBOX): 500 - boom'
     )
     assert markdown == ''

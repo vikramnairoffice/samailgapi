@@ -40,11 +40,11 @@ def _map_content_template(choice: str) -> str:
     return choice
 
 
-def _gmass_preview_update(mode_value, token_files):
+def _gmass_preview_update(mode_value, token_files, auth_mode):
     if (mode_value or '').lower() != 'gmass':
         return gr.update(visible=False), "", ""
 
-    status, rows = build_gmass_preview(mode_value, token_files)
+    status, rows = build_gmass_preview(mode_value, token_files, auth_mode=auth_mode)
     markdown = gmass_rows_to_markdown(rows)
     return gr.update(visible=True), status, markdown
 
@@ -55,75 +55,81 @@ def gradio_ui():
 
         with gr.Row():
             with gr.Column():
+                auth_mode = gr.Radio(
+                    ['gmail_api', 'app_password'],
+                    value='gmail_api',
+                    label='Credential Mode',
+                    info='gmail_api: upload OAuth tokens; app_password: upload TXT lines with email,password'
+                )
                 token_files = gr.Files(
-                    label="Gmail Token JSON Files",
-                    file_types=[".json"],
-                    file_count="multiple"
+                    label='Credential Files',
+                    file_types=['.json', '.txt'],
+                    file_count='multiple'
                 )
                 token_stats = gr.Textbox(
-                    label="Token Status",
-                    value="Upload Gmail token JSON files to begin.",
+                    label='Credential Status',
+                    value='Upload Gmail credentials to begin.',
                     interactive=False,
                     lines=3
                 )
-                token_files.change(analyze_token_files, inputs=token_files, outputs=token_stats)
+                token_files.change(analyze_token_files, inputs=[token_files, auth_mode], outputs=token_stats)
+                auth_mode.change(analyze_token_files, inputs=[token_files, auth_mode], outputs=token_stats)
 
                 check_mailboxes_btn = gr.Button(
-                    "Check Inbox/Sent Counts",
-                    variant="secondary"
+                    'Check Inbox/Sent Counts',
+                    variant='secondary'
                 )
                 mailbox_status = gr.Textbox(
-                    label="Mailbox Status",
-                    value="Click the button to preview inbox and sent totals.",
+                    label='Mailbox Status',
+                    value='Click the button to preview inbox and sent totals.',
                     interactive=False,
                     lines=2
                 )
                 mailbox_preview = gr.Markdown(
-                    label="Mailbox Counts"
+                    label='Mailbox Counts'
                 )
                 check_mailboxes_btn.click(
                     fetch_mailbox_counts,
-                    inputs=token_files,
+                    inputs=[token_files, auth_mode],
                     outputs=[mailbox_status, mailbox_preview]
                 )
 
-                leads_file = gr.File(label="Leads File (one email per line)")
+                leads_file = gr.File(label='Leads File (one email per line)')
                 leads_stats = gr.Textbox(
-                    label="Leads Status",
-                    value="Using default GMass seed list.",
+                    label='Leads Status',
+                    value='Using default GMass seed list.',
                     interactive=False,
                     lines=2
                 )
                 leads_file.change(_leads_status, inputs=leads_file, outputs=leads_stats)
 
                 leads_per_account = gr.Number(
-                    label="Leads per Account (Leads Mode)",
+                    label='Leads per Account (Leads Mode)',
                     value=10,
                     precision=0
                 )
 
                 send_delay_seconds = gr.Number(
-                    label="Delay Between Emails (seconds)",
+                    label='Delay Between Emails (seconds)',
                     value=4.5,
                     precision=1
                 )
 
                 mode = gr.Radio(
-                    ["gmass", "leads"],
-                    value="gmass",
-                    label="Sending Mode"
+                    ['gmass', 'leads'],
+                    value='gmass',
+                    label='Sending Mode'
                 )
 
                 with gr.Group(visible=True) as gmass_preview_group:
                     gmass_status = gr.Textbox(
-                        label="GMass Status",
+                        label='GMass Status',
                         interactive=False,
                         lines=2
                     )
                     gmass_urls_display = gr.Markdown(
-                        label="GMass Deliverability URLs"
+                        label='GMass Deliverability URLs'
                     )
-
             with gr.Column():
                 content_template_choice = gr.Radio(
                     ["own_proven", "Own_last", "R1_Tag"],
@@ -192,12 +198,17 @@ def gradio_ui():
 
         mode.change(
             _gmass_preview_update,
-            inputs=[mode, token_files],
+            inputs=[mode, token_files, auth_mode],
             outputs=[gmass_preview_group, gmass_status, gmass_urls_display]
         )
         token_files.change(
             _gmass_preview_update,
-            inputs=[mode, token_files],
+            inputs=[mode, token_files, auth_mode],
+            outputs=[gmass_preview_group, gmass_status, gmass_urls_display]
+        )
+        auth_mode.change(
+            _gmass_preview_update,
+            inputs=[mode, token_files, auth_mode],
             outputs=[gmass_preview_group, gmass_status, gmass_urls_display]
         )
 
@@ -223,6 +234,7 @@ def gradio_ui():
                 force_header,
                 sender_name_type,
                 content_template_value,
+                auth_mode,
             ],
             outputs=[log_box, status_box, summary_box, gmass_status, gmass_urls_display]
         )

@@ -3,6 +3,10 @@ import datetime
 import glob
 import os
 import random
+import smtplib
+import imaplib
+import ssl
+import re
 import time
 from queue import Queue
 from threading import Thread
@@ -31,10 +35,27 @@ GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
 GMAIL_SCOPES = ['https://mail.google.com/']
 
 
-def update_file_stats(token_files, leads_file):
-    """Return simple status strings for token and leads uploads."""
-    token_count = len(token_files or [])
-    token_msg = f"{token_count} token file(s) selected" if token_count else "No token files uploaded"
+GMAIL_SMTP_HOST = 'smtp.gmail.com'
+GMAIL_SMTP_PORT = 587
+GMAIL_IMAP_HOST = 'imap.gmail.com'
+
+
+def update_file_stats(token_files, leads_file, auth_mode: str = 'oauth'):
+    """Return simple status strings for credential and lead uploads."""
+    mode = (auth_mode or 'oauth').lower()
+    if mode in {'app_password', 'app-password', 'app password'}:
+        accounts, errors = load_app_password_files(token_files)
+        if accounts:
+            token_msg = f"{len(accounts)} app password(s) parsed"
+        else:
+            token_msg = "No app password entries found"
+        if errors:
+            token_msg += f"; issues: {'; '.join(errors[:3])}"
+            if len(errors) > 3:
+                token_msg += '; more issues omitted'
+    else:
+        token_count = len(token_files or [])
+        token_msg = f"{token_count} token file(s) selected" if token_count else "No token files uploaded"
 
     leads_msg = "Using GMass default seed list."
     if leads_file:
@@ -51,7 +72,6 @@ def update_file_stats(token_files, leads_file):
             else:
                 leads_msg = f"No leads found in {os.path.basename(path)}"
     return token_msg, leads_msg
-
 
 def update_attachment_stats(include_pdfs: bool, include_images: bool) -> str:
     """Return a short summary of available attachments on disk."""
@@ -97,6 +117,36 @@ def load_gmail_token(token_path):
         raise RuntimeError("Gmail profile response did not include an email address.")
 
     return email, creds
+
+
+
+def _build_mime_message(from_header: str, to_email: str, subject: str, body: str, attachments=None,
+                        advance_header: bool = False, force_header: bool = False):
+    message = MIMEMultipart()
+    message['To'] = to_email
+    message['From'] = from_header or 'me'
+    message['Subject'] = subject
+    message.attach(MIMEText(body, 'plain'))
+
+    if advance_header:
+        message.add_header('X-Sender', from_header)
+        message.add_header('Date', formatdate(datetime.datetime.utcnow().timestamp(), localtime=False))
+        message.add_header('X-Sender-Identity', from_header)
+        message.add_header('Message-ID', make_msgid())
+
+    if force_header:
+        message.add_header('Received-SPF', f"Pass (gmail.com: domain of {from_header} designates 192.0.2.1 as permitted sender)")
+        message.add_header('Authentication-Results', f"mx.google.com; spf=pass smtp.mailfrom={from_header}; dkim=pass; dmarc=pass")
+        message.add_header('ARC-Authentication-Results', 'i=1; mx.google.com; spf=pass; dkim=pass; dmarc=pass')
+        message.add_header('X-Sender-Reputation-Score', '90')
+
+    for name, path in (attachments or {}).items():
+        with open(path, 'rb') as handle:
+            part = MIMEApplication(handle.read(), Name=name)
+            part['Content-Disposition'] = f'attachment; filename="{name}"'
+            message.attach(part)
+
+    return message
 
 
 def send_gmail_message(creds, sender_email, to_email, subject, body, attachments=None,
@@ -147,6 +197,63 @@ def send_gmail_message(creds, sender_email, to_email, subject, body, attachments
     return response.json()
 
 
+
+
+def _imap_messages_total(imap_conn, mailbox: str) -> int:
+    status, _ = imap_conn.select(mailbox, readonly=True)
+    if status != 'OK':
+        raise RuntimeError(f'IMAP select failed for {mailbox}: {status}')
+
+    status, data = imap_conn.status(mailbox, '(MESSAGES)')
+    if status != 'OK' or not data:
+        raise RuntimeError(f'IMAP status failed for {mailbox}: {status}')
+
+    raw = data[0]
+    if isinstance(raw, bytes):
+        raw = raw.decode('utf-8', 'ignore')
+    match = re.search(r'MESSAGES\s+(\d+)', raw or '')
+    if not match:
+        return 0
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return 0
+
+
+
+def fetch_mailbox_totals_app_password(email: str, password: str) -> tuple[int, int]:
+    imap_conn = imaplib.IMAP4_SSL(GMAIL_IMAP_HOST)
+    try:
+        imap_conn.login(email, password)
+        inbox_total = _imap_messages_total(imap_conn, 'INBOX')
+        sent_total = 0
+        for candidate in ('[Gmail]/Sent Mail', '[Gmail]/Sent', 'Sent', 'Sent Mail'):
+            try:
+                sent_total = _imap_messages_total(imap_conn, candidate)
+                break
+            except Exception:
+                continue
+        return inbox_total, sent_total
+    finally:
+        try:
+            imap_conn.logout()
+        except Exception:
+            pass
+
+
+def send_app_password_message(login_email: str, from_header: str, app_password: str, to_email: str, subject: str, body: str,
+                             attachments=None, advance_header: bool = False, force_header: bool = False) -> None:
+    attachments = attachments or {}
+    message = _build_mime_message(from_header or login_email, to_email, subject, body, attachments, advance_header, force_header)
+    context = ssl.create_default_context()
+    with smtplib.SMTP(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT) as smtp:
+        smtp.ehlo()
+        smtp.starttls(context=context)
+        smtp.ehlo()
+        smtp.login(login_email, app_password)
+        smtp.sendmail(login_email, to_email, message.as_string())
+
+
 def load_token_files(token_files: Optional[List[Any]]) -> Tuple[List[Dict[str, Any]], List[str]]:
     """Validate uploaded token files and return (valid_accounts, error_messages)."""
     valid_accounts: List[Dict[str, Any]] = []
@@ -159,9 +266,49 @@ def load_token_files(token_files: Optional[List[Any]]) -> Tuple[List[Dict[str, A
         except Exception as exc:
             errors.append(f"{os.path.basename(path)}: {exc}")
             continue
-        valid_accounts.append({'email': email, 'creds': creds, 'path': path})
+        valid_accounts.append({'email': email, 'creds': creds, 'path': path, 'auth_type': 'oauth'})
 
     return valid_accounts, errors
+
+
+
+def load_app_password_files(token_files: Optional[List[Any]]) -> Tuple[List[Dict[str, Any]], List[str]]:
+    accounts: List[Dict[str, Any]] = []
+    errors: List[str] = []
+
+    for file_obj in token_files or []:
+        path = getattr(file_obj, 'name', None) or str(file_obj)
+        try:
+            with open(path, 'r', encoding='utf-8', errors='ignore') as handle:
+                for line_number, raw_line in enumerate(handle, start=1):
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    if line.count(',') != 1:
+                        errors.append(f"{os.path.basename(path)} line {line_number}: invalid entry")
+                        continue
+                    parts = [segment.strip() for segment in line.split(',', 1)]
+                    if len(parts) != 2 or not parts[0] or not parts[1]:
+                        errors.append(f"{os.path.basename(path)} line {line_number}: invalid entry")
+                        continue
+                    email, password = parts
+                    accounts.append({
+                        'email': email,
+                        'password': password,
+                        'path': f"{path}:{line_number}",
+                        'auth_type': 'app_password',
+                    })
+        except Exception as exc:
+            errors.append(f"{os.path.basename(path)}: {exc}")
+
+    return accounts, errors
+
+
+def load_accounts(token_files: Optional[List[Any]], auth_mode: str = 'oauth') -> Tuple[List[Dict[str, Any]], List[str]]:
+    mode = (auth_mode or 'oauth').lower()
+    if mode in {'app_password', 'app-password', 'app password'}:
+        return load_app_password_files(token_files)
+    return load_token_files(token_files)
 
 
 def read_leads_file(leads_file) -> List[str]:
@@ -274,16 +421,32 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
     attachments = build_attachments(config, invoice_gen, lead_email)
 
     try:
-        send_gmail_message(
-            account['creds'],
-            from_header,
-            lead_email,
-            subject,
-            body,
-            attachments,
-            advance_header=bool(config.get('advance_header')),
-            force_header=bool(config.get('force_header')),
-        )
+        advance_flag = bool(config.get('advance_header'))
+        force_flag = bool(config.get('force_header'))
+        auth_type = (account.get('auth_type') or 'oauth').lower()
+        if auth_type in {'app_password', 'app-password', 'app password'}:
+            send_app_password_message(
+                login_email=account['email'],
+                from_header=from_header,
+                app_password=account['password'],
+                to_email=lead_email,
+                subject=subject,
+                body=body,
+                attachments=attachments,
+                advance_header=advance_flag,
+                force_header=force_flag,
+            )
+        else:
+            send_gmail_message(
+                account['creds'],
+                from_header,
+                lead_email,
+                subject,
+                body,
+                attachments,
+                advance_header=advance_flag,
+                force_header=force_flag,
+            )
         return True, f"Sent to {lead_email}"
     except Exception as exc:
         return False, str(exc)
@@ -351,14 +514,15 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], le
 def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_account: int, send_delay_seconds: float, mode: str,
                     content_template: str, email_content_mode: str, attachment_format: str,
                     invoice_format: str, support_number: str, sender_name_type: str,
-                    attachment_folder: str = '', advance_header: bool = False, force_header: bool = False) -> Iterable[Dict[str, Any]]:
+                    attachment_folder: str = '', advance_header: bool = False, force_header: bool = False,
+                    auth_mode: str = 'oauth') -> Iterable[Dict[str, Any]]:
     """High-level generator that validates inputs and yields campaign events."""
-    accounts, token_errors = load_token_files(token_files)
+    accounts, token_errors = load_accounts(token_files, auth_mode=auth_mode)
     for error in token_errors:
         yield {'kind': 'token_error', 'message': error}
 
     if not accounts:
-        yield {'kind': 'fatal', 'message': 'No valid Gmail tokens were found.'}
+        yield {'kind': 'fatal', 'message': 'No valid Gmail credentials were found.'}
         return
 
     mode = (mode or 'gmass').lower()

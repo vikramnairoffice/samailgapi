@@ -7,8 +7,9 @@ import ui_token_helpers as helpers
 def test_build_gmass_preview_returns_urls(monkeypatch):
     captured = {}
 
-    def fake_load_token_files(token_files):
+    def fake_load_accounts(token_files, auth_mode='oauth'):
         captured['token_files'] = token_files
+        captured['auth_mode'] = auth_mode
         return (
             [
                 {'email': 'niao78@gmail.com'},
@@ -17,11 +18,12 @@ def test_build_gmass_preview_returns_urls(monkeypatch):
             [],
         )
 
-    monkeypatch.setattr(helpers, 'load_token_files', fake_load_token_files)
+    monkeypatch.setattr(helpers, 'load_accounts', fake_load_accounts)
 
-    status, table = helpers.build_gmass_preview('gmass', ['niao78.json'])
+    status, table = helpers.build_gmass_preview('gmass', ['niao78.json'], auth_mode='gmail_api')
 
     assert captured['token_files'] == ['niao78.json']
+    assert captured['auth_mode'] == 'gmail_api'
     assert status == 'Completed! Check 2 GMass URLs.'
     assert table == [
         ['niao78@gmail.com', 'https://www.gmass.co/inbox?q=niao78'],
@@ -30,25 +32,25 @@ def test_build_gmass_preview_returns_urls(monkeypatch):
 
 
 def test_build_gmass_preview_handles_no_accounts(monkeypatch):
-    monkeypatch.setattr(helpers, 'load_token_files', lambda files: ([], []))
+    monkeypatch.setattr(helpers, 'load_accounts', lambda files, auth_mode='oauth': ([], []))
 
-    status, table = helpers.build_gmass_preview('gmass', ['missing.json'])
+    status, table = helpers.build_gmass_preview('gmass', ['missing.json'], auth_mode='gmail_api')
 
     assert status == 'No Gmail accounts available for GMass preview.'
     assert table == []
 
 
 def test_build_gmass_preview_non_gmass_mode(monkeypatch):
-    # load_token_files should not be called when mode is not GMass
+    # load_accounts should not be called when mode is not GMass
     called = {'value': False}
 
-    def fake_loader(token_files):
+    def fake_loader(token_files, auth_mode='oauth'):
         called['value'] = True
         return ([], [])
 
-    monkeypatch.setattr(helpers, 'load_token_files', fake_loader)
+    monkeypatch.setattr(helpers, 'load_accounts', fake_loader)
 
-    status, table = helpers.build_gmass_preview('leads', ['file.json'])
+    status, table = helpers.build_gmass_preview('leads', ['file.json'], auth_mode='gmail_api')
 
     assert called['value'] is False
     assert status == ''
@@ -72,7 +74,7 @@ def test_start_campaign_appends_gmass_preview(monkeypatch):
     preview_status = 'Completed! Check 1 GMass URLs.'
     preview_rows = [['niao78@gmail.com', 'https://www.gmass.co/inbox?q=niao78']]
 
-    monkeypatch.setattr(helpers, 'build_gmass_preview', lambda mode, tokens: (preview_status, preview_rows))
+    monkeypatch.setattr(helpers, 'build_gmass_preview', lambda mode, tokens, auth_mode='oauth': (preview_status, preview_rows))
 
     def fake_campaign_events(**kwargs):
         yield {
@@ -118,7 +120,7 @@ def test_start_campaign_appends_gmass_preview(monkeypatch):
 
 
 def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
-    monkeypatch.setattr(helpers, 'build_gmass_preview', lambda mode, tokens: ('unexpected', [['x']]))
+    monkeypatch.setattr(helpers, 'build_gmass_preview', lambda mode, tokens, auth_mode='oauth': ('unexpected', [['x']]))
     monkeypatch.setattr(helpers, 'gmass_rows_to_markdown', lambda rows: 'should-not-appear')
 
     def fake_campaign_events(**kwargs):
