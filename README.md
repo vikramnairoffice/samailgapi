@@ -4,7 +4,7 @@ Token-first Gmail sender with a Gradio dashboard, personalized invoice generatio
 
 ## Highlights
 - **Gmail REST only** - no SMTP passwords; each token is verified via the Gmail profile endpoint before sends.
-- **Colab form cell** - copy `colab_form_cell.py` into a notebook cell for an all-in-one upload + send experience.
+- **Colab bootstrap helper** - run `colab_setup` to prep a notebook and launch the Gradio UI.
 - **Invoice/attachment workflow** - generate PDFs/HEIF images on the fly or re-use assets stored under `pdfs/`, `images/`, and `logos/`.
 - **Seed + leads modes** - blast the bundled GMass seed list or distribute uploaded leads across accounts.
 - **Console entry point** - install the package and launch the Gradio UI with `simple-mailer`.
@@ -44,16 +44,14 @@ from ui import main  # launches the Gradio dashboard
      from ui import main
      main()  # opens Gradio in Colab output
      ```
-   - Option B - paste the contents of `colab_form_cell.py` into a Colab cell. The form handles token/leads uploads and streams campaign progress inside the notebook.
-
-If you prefer an imperative helper, execute:
-```python
-import colab_setup
-colab_setup.install_packages()
-colab_setup.create_directories()
-colab_setup.launch_app()
-```
-This installs notebook extras (`google-auth-oauthlib`, `google-api-python-client`), prepares `gmail_tokens/`, `pdfs/`, `images/`, and launches the UI.
+   - Option B - call the bootstrap helper:
+     ```python
+     import colab_setup
+     colab_setup.install_packages()
+     colab_setup.create_directories()
+     colab_setup.launch_app()
+     ```
+     This installs notebook extras (`google-auth-oauthlib`, `google-api-python-client`), prepares `gmail_tokens/`, `pdfs/`, `images/`, and launches the UI.
 
 ## Gmail token requirements
 - Generate OAuth2 refresh tokens with scope `https://mail.google.com/` (e.g., via Google Cloud Console or OAuth playground).
@@ -67,7 +65,6 @@ ui_token_helpers.py # Bridges UI events to the mailer generator
 mailer.py           # Gmail REST workflow + token/lead orchestration
 invoice.py          # Invoice generator (PDF, PNG, HEIF)
 content.py          # Subject/body templates and sender name helpers
-colab_form_cell.py  # Copy-paste Colab cell with upload form
 colab_setup.py      # Bootstrap helper for Colab/notebook runs
 requirements.txt    # Runtime dependencies
 setup.py            # Packaging configuration

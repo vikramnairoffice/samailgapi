@@ -1,8 +1,12 @@
 import random
 import string
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Callable, Dict, List, Mapping, Optional
+
 from faker import Faker
+
 
 fake = Faker()
 
@@ -53,54 +57,360 @@ R1_DELIMITER = " | "
 R1_ALPHA_POOL = string.ascii_uppercase + string.digits
 
 
-def _format_r1_date_long(today: datetime) -> str:
-    """Return date like 'June 18 -2025'."""
-    month = today.strftime('%B')
-    return f"{month} {today.day} -{today.year}"
+TagContext = Optional[Mapping[str, str]]
+TagGenerator = Callable[[TagContext], str]
 
 
-def _format_r1_date_numeric(today: datetime) -> str:
-    """Return date like '06/18/2025'."""
-    return today.strftime('%m/%d/%Y')
+@dataclass(frozen=True)
+class TagDefinition:
+    name: str
+    description: str
+    example: str
+    generator: TagGenerator
 
 
-def _random_alphanumeric(length: int) -> str:
-    """Return uppercase alphanumeric string for identifiers."""
-    return ''.join(random.choices(R1_ALPHA_POOL, k=length))
+def _context_lookup(context: TagContext, key: str) -> Optional[str]:
+    if context:
+        value = context.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return None
 
 
-def _generate_r1_date(today: datetime) -> str:
-    """Pick between formatted date variants for the R1 Tag."""
-    return random.choice([_format_r1_date_long(today), _format_r1_date_numeric(today)])
+def _random_numeric_string(min_digits: int, max_digits: int) -> str:
+    length = random.randint(min_digits, max_digits)
+    return ''.join(random.choices(string.digits, k=length))
 
 
-def _generate_r1_name() -> str:
-    """Pick between standard full name or letter-prefixed variant."""
-    first = fake.first_name()
-    last = fake.last_name()
-    return random.choice([
-        f"{first} {last}",
-        f"{random.choice(string.ascii_uppercase)}{first}{last}",
-    ])
+def _random_letter_string(min_length: int, max_length: int, alphabet: str) -> str:
+    length = random.randint(min_length, max_length)
+    return ''.join(random.choices(alphabet, k=length))
 
 
-def _generate_r1_token() -> str:
-    """Pick between custom INV sequence and a UUID string."""
-    inv_token = 'INV' + _random_alphanumeric(12) + _random_alphanumeric(8) + _random_alphanumeric(6)
-    return random.choice([inv_token, str(uuid.uuid4())])
+def _random_upper_alphanumeric(min_length: int, max_length: int) -> str:
+    length = random.randint(min_length, max_length)
+    alphabet = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(alphabet, k=length))
 
 
-def generate_r1_tag_entry() -> str:
-    """Assemble the R1 Tag content string with randomized order."""
+def _tag_date_multi(_: TagContext = None) -> str:
     today = datetime.now()
-    components = [
-        _generate_r1_date(today),
-        _generate_r1_name(),
-        _generate_r1_token(),
-        random.choice(DEFAULT_SUBJECTS),
+    formats = ["%d %B, %Y", "%B %d, %Y", "%d %b %Y"]
+    return today.strftime(random.choice(formats))
+
+
+def _tag_date_numeric(_: TagContext = None) -> str:
+    today = datetime.now()
+    formats = ["%m/%d/%Y", "%d/%m/%Y"]
+    return today.strftime(random.choice(formats))
+
+
+def _tag_datetime(_: TagContext = None) -> str:
+    today = datetime.now()
+    formats = ["%d %B, %Y %H:%M:%S", "%d %b %Y %H:%M:%S", "%m/%d/%Y %H:%M:%S"]
+    return today.strftime(random.choice(formats))
+
+
+def _tag_single_name(_: TagContext = None) -> str:
+    return fake.first_name()
+
+
+def _tag_full_name(_: TagContext = None) -> str:
+    return f"{fake.first_name()} {fake.last_name()}"
+
+
+def _tag_unique_name(_: TagContext = None) -> str:
+    initial = fake.first_name()[0]
+    primary = fake.first_name()
+    last = fake.last_name()
+    return f"{initial}. {primary} {last}"
+
+
+def _tag_email(_: TagContext = None) -> str:
+    return fake.email()
+
+
+def _tag_content(context: TagContext = None) -> str:
+    value = _context_lookup(context, 'content')
+    if value:
+        return value
+    return "Content"
+
+
+def _tag_invoice(_: TagContext = None) -> str:
+    prefix = ''.join(random.choices(string.ascii_uppercase, k=10))
+    mid = _random_numeric_string(7, 8)
+    suffix = ''.join(random.choices(string.ascii_uppercase, k=5))
+    return f"INV-{prefix}-{mid}-{suffix}"
+
+
+def _tag_short_numeric(_: TagContext = None) -> str:
+    return _random_numeric_string(5, 10)
+
+
+def _tag_long_numeric(_: TagContext = None) -> str:
+    return _random_numeric_string(10, 15)
+
+
+def _tag_short_mixed_letters(_: TagContext = None) -> str:
+    return _random_letter_string(10, 15, string.ascii_letters)
+
+
+def _tag_long_mixed_letters(_: TagContext = None) -> str:
+    return _random_letter_string(20, 30, string.ascii_letters)
+
+
+def _tag_short_upper_letters(_: TagContext = None) -> str:
+    return _random_letter_string(10, 15, string.ascii_uppercase)
+
+
+def _tag_long_upper_letters(_: TagContext = None) -> str:
+    return _random_letter_string(20, 30, string.ascii_uppercase)
+
+
+def _tag_short_lower_letters(_: TagContext = None) -> str:
+    return _random_letter_string(10, 15, string.ascii_lowercase)
+
+
+def _tag_long_lower_letters(_: TagContext = None) -> str:
+    return _random_letter_string(20, 30, string.ascii_lowercase)
+
+
+def _tag_uuid(_: TagContext = None) -> str:
+    return str(uuid.uuid4())
+
+
+def _tag_trx(_: TagContext = None) -> str:
+    return _random_upper_alphanumeric(35, 40)
+
+
+def _tag_address(_: TagContext = None) -> str:
+    return fake.street_address()
+
+
+def _tag_full_address(_: TagContext = None) -> str:
+    raw = fake.address()
+    clean = raw.replace('\r\n', '\n').replace('\n', ', ')
+    return clean.strip()
+
+
+def _tag_tfn(context: TagContext = None) -> str:
+    value = _context_lookup(context, 'tfn')
+    if value:
+        return value
+    return fake.phone_number()
+
+
+TAG_DEFINITIONS: Dict[str, TagDefinition] = {
+    "#DATE#": TagDefinition(
+        name="#DATE#",
+        description="Generates the current date in multiple formats.",
+        example="18 June, 2024",
+        generator=_tag_date_multi,
+    ),
+    "#DATE1#": TagDefinition(
+        name="#DATE1#",
+        description="Generates the current date in various numeric formats.",
+        example="07/05/2025",
+        generator=_tag_date_numeric,
+    ),
+    "#DATETIME#": TagDefinition(
+        name="#DATETIME#",
+        description="Generates the current date and time in different formats.",
+        example="20 May, 2025 00:00:00",
+        generator=_tag_datetime,
+    ),
+    "#NAME#": TagDefinition(
+        name="#NAME#",
+        description="Generates a random single name.",
+        example="Crystle",
+        generator=_tag_single_name,
+    ),
+    "#FNAME#": TagDefinition(
+        name="#FNAME#",
+        description="Generates a random full name.",
+        example="Robert Schmidt",
+        generator=_tag_full_name,
+    ),
+    "#UNAME#": TagDefinition(
+        name="#UNAME#",
+        description="Generates a random unique name.",
+        example="R. Nathan Hahn",
+        generator=_tag_unique_name,
+    ),
+    "#EMAIL#": TagDefinition(
+        name="#EMAIL#",
+        description="Retrieves the client's email address.",
+        example="alex2024@gmail.com",
+        generator=_tag_email,
+    ),
+    "#CONTENT#": TagDefinition(
+        name="#CONTENT#",
+        description="Gets the main body content entered in the body box using this tag.",
+        example="Content",
+        generator=_tag_content,
+    ),
+    "#INV#": TagDefinition(
+        name="#INV#",
+        description="Generates a unique sequence number.",
+        example="INV-FIGGRWNNFIT-04446407-SJXNE",
+        generator=_tag_invoice,
+    ),
+    "#INUM#": TagDefinition(
+        name="#INUM#",
+        description="Generates a short numeric value (5 to 10 digits).",
+        example="494500",
+        generator=_tag_short_numeric,
+    ),
+    "#LNUM#": TagDefinition(
+        name="#LNUM#",
+        description="Generates a long numeric value (10 to 15 digits).",
+        example="0770431750123",
+        generator=_tag_long_numeric,
+    ),
+    "#SMLETT#": TagDefinition(
+        name="#SMLETT#",
+        description="Generates a short mixed-case letter string (10 to 15 characters).",
+        example="FzsAcgjWqN",
+        generator=_tag_short_mixed_letters,
+    ),
+    "#LMLETT#": TagDefinition(
+        name="#LMLETT#",
+        description="Generates a long mixed-case letter string (20 to 30 characters).",
+        example="JVyDJmYahbZGHJQUtdBF",
+        generator=_tag_long_mixed_letters,
+    ),
+    "#SCLETT#": TagDefinition(
+        name="#SCLETT#",
+        description="Generates a short uppercase letter string (10 to 15 characters).",
+        example="EVOUAHLEM",
+        generator=_tag_short_upper_letters,
+    ),
+    "#LCLETT#": TagDefinition(
+        name="#LCLETT#",
+        description="Generates a long uppercase letter string (20 to 30 characters).",
+        example="PEQLXACTDWRDPHZTT",
+        generator=_tag_long_upper_letters,
+    ),
+    "#SLLETT#": TagDefinition(
+        name="#SLLETT#",
+        description="Generates a short lowercase letter string (10 to 15 characters).",
+        example="mxsebrvl",
+        generator=_tag_short_lower_letters,
+    ),
+    "#LLLETT#": TagDefinition(
+        name="#LLLETT#",
+        description="Generates a long lowercase letter string (20 to 30 characters).",
+        example="igxnibvmtqksywep",
+        generator=_tag_long_lower_letters,
+    ),
+    "#UKEY#": TagDefinition(
+        name="#UKEY#",
+        description="Generates a unique UUID key.",
+        example="1038df95-d2db-4fff-a668-c4cde9f7ec30",
+        generator=_tag_uuid,
+    ),
+    "#TRX#": TagDefinition(
+        name="#TRX#",
+        description="Generates a random alphanumeric string (35 to 40 characters).",
+        example="2CHCICPY1U0EVU6SMZZ1A3M0GGG05JPNETYYSI",
+        generator=_tag_trx,
+    ),
+    "#ADDRESS#": TagDefinition(
+        name="#ADDRESS#",
+        description="Generates a random postal address.",
+        example="108 Hemway Center",
+        generator=_tag_address,
+    ),
+    "#ADDRESS1#": TagDefinition(
+        name="#ADDRESS1#",
+        description="Generates a random full address.",
+        example="3356 Leon Keys Suite 431 Shawton, VY 88912",
+        generator=_tag_full_address,
+    ),
+    "#TFN#": TagDefinition(
+        name="#TFN#",
+        description="Retrieves the number entered in the TFN input box.",
+        example="+1 (856) 347-2649",
+        generator=_tag_tfn,
+    ),
+}
+
+
+def get_tag_definitions() -> List[TagDefinition]:
+    """Return tag definitions preserving declaration order."""
+    return list(TAG_DEFINITIONS.values())
+
+
+def generate_tag_value(tag_name: str, context: TagContext = None) -> str:
+    """Return a realized tag value for the provided tag name."""
+    definition = TAG_DEFINITIONS.get(tag_name)
+    if definition is None:
+        raise KeyError(f"Unknown tag: {tag_name}")
+    return definition.generator(context)
+
+
+R1_PREFIX_CHOICES = ["Automatic", "Automated", "FWD", "FWD.", "FWD:"]
+R1_KEYWORD_CHOICES = [
+    "Auotmaitc",
+    "Debit",
+    "Delivery",
+    "Deposit",
+    "Details",
+    "Project",
+    "Proposal",
+    "Ticket",
+    "Recipet",
+    "Refund",
+    "Registered",
+    "Re-Rrint",
+    "Receipt",
+    "Registrations",
+    "Reimbursement",
+    "Reminder",
+    "Renewal",
+    "Reply",
+    "Report",
+    "Rerserach",
+    "Reservation",
+    "Snapshot",
+    "Subscription",
+    "Updated",
+    "Paid",
+]
+R1_NAME_TAGS = ["#NAME#", "#FNAME#", "#UNAME#"]
+R1_DATE_TAGS = ["#DATE#", "#DATE1#", "#DATETIME#"]
+R1_STRING_TAGS = [
+    "#INV#",
+    "#UKEY#",
+    "#TRX#",
+    "#SMLETT#",
+    "#LMLETT#",
+    "#SCLETT#",
+    "#LCLETT#",
+    "#SLLETT#",
+    "#LLLETT#",
+    "#INUM#",
+    "#LNUM#",
+]
+
+
+def generate_r1_tag_entry(tag_context: TagContext = None) -> str:
+    """Assemble the R1 Tag content string using the shared tag system."""
+    components: List[str] = []
+    if random.random() < 0.5:
+        components.append(random.choice(R1_PREFIX_CHOICES))
+
+    core_parts = [
+        random.choice(R1_KEYWORD_CHOICES),
+        generate_tag_value(random.choice(R1_NAME_TAGS), tag_context),
+        generate_tag_value(random.choice(R1_DATE_TAGS), tag_context),
+        generate_tag_value(random.choice(R1_STRING_TAGS), tag_context),
     ]
-    random.shuffle(components)
+    random.shuffle(core_parts)
+    components.extend(core_parts)
     return R1_DELIMITER.join(components)
+
 
 def generate_business_name():
     """Generate business name: FirstName + RandomLetters + BusinessWord + RandomLetters + Suffix"""
@@ -1028,12 +1338,12 @@ class ContentManager:
         # Keep default subjects for proven mode
         self.default_subjects = DEFAULT_SUBJECTS  # Use existing array
     
-    def get_subject_and_body(self, template_mode="own_proven"):
-        """Main function - returns (subject, body) based on template"""
+    def get_subject_and_body(self, template_mode="own_proven", tag_context: TagContext = None):
+        """Main function - returns (subject, body) based on template."""
         mode = (template_mode or "own_proven").lower()
 
         if mode == "r1_tag":
-            tag_content = generate_r1_tag_entry()
+            tag_content = generate_r1_tag_entry(tag_context)
             return tag_content, tag_content
 
         # Always generate subject using new prefix pattern approach

@@ -46,7 +46,6 @@ setup(
         'content',
         'ui_token_helpers',
         'colab_setup',
-        'colab_form_cell',
     ],
     install_requires=parse_requirements(),
     extras_require={
