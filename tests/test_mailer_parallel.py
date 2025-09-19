@@ -50,7 +50,7 @@ def test_run_campaign_emits_one_event_per_lead(monkeypatch: pytest.MonkeyPatch) 
     }
 
     events = list(
-        mailer.run_campaign(accounts, "manual", leads, 2, config, send_delay_seconds=0.0)
+        mailer.run_campaign(accounts, "manual", leads, config, send_delay_seconds=0.0)
     )
 
     assert len(events) == len(leads)
@@ -80,17 +80,18 @@ def test_run_campaign_uses_distinct_worker_threads(monkeypatch: pytest.MonkeyPat
         "sender_name_type": "business",
     }
 
-    list(mailer.run_campaign(accounts, "manual", leads, 2, config, send_delay_seconds=0.0))
+    list(mailer.run_campaign(accounts, "manual", leads, config, send_delay_seconds=0.0))
 
     assert len(set(thread_names)) >= 3
 
 def test_distribute_leads_even_split_without_cap() -> None:
     leads = [f"lead{i}@example.com" for i in range(5)]
-    assignments = mailer.distribute_leads(leads, 2, leads_per_account=1)
+    assignments = mailer.distribute_leads(leads, 2)
     assert [len(chunk) for chunk in assignments] == [3, 2]
     assert sorted(sum(assignments, [])) == sorted(leads)
 
 def test_distribute_leads_handles_more_accounts_than_leads() -> None:
     leads = ["a@example.com", "b@example.com"]
-    assignments = mailer.distribute_leads(leads, 3, leads_per_account=10)
+    assignments = mailer.distribute_leads(leads, 3)
     assert [len(chunk) for chunk in assignments] == [1, 1, 0]
+

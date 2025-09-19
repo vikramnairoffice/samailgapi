@@ -28,12 +28,12 @@ This document enumerates all public and helper functions/classes by module.
 - **`send_gmail_message(creds, sender_email, to_email, subject, body, attachments)`**: Sends an email using the Gmail REST API.
 - **`load_token_files(token_files)`**: Processes uploaded token files, returning a list of valid accounts and any errors.
 - **`read_leads_file(leads_file)`**: Reads emails from a leads file.
-- **`distribute_leads(leads, account_count, leads_per_account)`**: Evenly splits leads across all accounts, ignoring manual caps.
+- **`distribute_leads(leads, account_count)`**: Evenly splits leads across all accounts, ignoring manual caps.
 - **`choose_random_attachments(include_pdfs, include_images)`**: Selects random static attachments.
 - **`build_attachments(config, invoice_gen, lead_email)`**: Determines whether to use a static attachment or generate an invoice.
 - **`compose_email(account_email, config)`**: Generates the subject, body, and `From` header for an email.
 - **`send_single_email(account, lead_email, config, invoice_gen)`**: A wrapper to compose and send a single email, handling errors.
-- **`run_campaign(accounts, mode, leads, leads_per_account, config)`**: Launches one worker per account and streams progress events from the queue.
+- **`run_campaign(accounts, mode, leads, config)`**: Launches one worker per account and streams progress events from the queue.
 - **`campaign_events(...)`**: The main generator function that orchestrates the entire campaign, yielding events for UI updates.
 
 ## `ui_token_helpers.py`
@@ -52,3 +52,4 @@ This document enumerates all public and helper functions/classes by module.
 
 ## `setup.py`
 - Contains standard project setup configuration for packaging and distribution, including dependencies and entry points.
+

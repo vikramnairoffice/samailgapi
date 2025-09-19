@@ -325,8 +325,8 @@ def read_leads_file(leads_file) -> List[str]:
     return leads
 
 
-def distribute_leads(leads: List[str], account_count: int, leads_per_account: int) -> List[List[str]]:
-    """Evenly split leads across accounts with no manual cap."""
+def distribute_leads(leads: List[str], account_count: int) -> List[List[str]]:
+    """Evenly split leads across accounts."""
     if account_count <= 0:
         return []
 
@@ -452,7 +452,7 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
         return False, str(exc)
 
 
-def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], leads_per_account: int, config: Dict[str, Any], send_delay_seconds: float) -> Iterable[Dict[str, Any]]:
+def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], config: Dict[str, Any], send_delay_seconds: float) -> Iterable[Dict[str, Any]]:
     """Send emails per account concurrently and yield their progress."""
     account_count = len(accounts)
     if account_count <= 0:
@@ -465,7 +465,7 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], le
     if (mode or '').lower() == 'gmass':
         assignments = [list(DEFAULT_GMASS_RECIPIENTS) for _ in range(account_count)]
     else:
-        assignments = distribute_leads(leads, account_count, leads_per_account)
+        assignments = distribute_leads(leads, account_count)
 
     result_queue: Queue = Queue()
     sentinel = object()
@@ -511,7 +511,7 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], le
         for thread in threads:
             thread.join()
 
-def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_account: int, send_delay_seconds: float, mode: str,
+def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_seconds: float, mode: str,
                     content_template: str, email_content_mode: str, attachment_format: str,
                     invoice_format: str, support_number: str, sender_name_type: str,
                     attachment_folder: str = '', advance_header: bool = False, force_header: bool = False,
@@ -535,10 +535,6 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_acco
             yield {'kind': 'fatal', 'message': 'Leads mode selected but no leads were found.'}
             return
 
-    try:
-        leads_per_account_int = int(leads_per_account or 0)
-    except Exception:
-        leads_per_account_int = 0
 
     config = {
         'content_template': content_template,
@@ -563,7 +559,7 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_acco
     total_attempts = 0
     successes = 0
 
-    for result in run_campaign(accounts, mode, leads, leads_per_account_int, config, delay_seconds):
+    for result in run_campaign(accounts, mode, leads, config, delay_seconds):
         total_attempts += 1
         successes += 1 if result['success'] else 0
         yield {
@@ -577,6 +573,7 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, leads_per_acco
         'kind': 'done',
         'message': f"Completed {total_attempts} send attempt(s) with {successes} success(es).",
     }
+
 
 
 

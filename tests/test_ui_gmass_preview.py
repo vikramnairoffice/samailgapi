@@ -97,7 +97,6 @@ def test_start_campaign_appends_gmass_preview(monkeypatch):
     generator = helpers.start_campaign(
         token_files=['niao78.json'],
         leads_file=None,
-        leads_per_account=1,
         send_delay_seconds=0.0,
         mode='gmass',
         email_content_mode='Attachment',
@@ -131,7 +130,6 @@ def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
     generator = helpers.start_campaign(
         token_files=['niao78.json'],
         leads_file=None,
-        leads_per_account=1,
         send_delay_seconds=0.0,
         mode='leads',
         email_content_mode='Attachment',
@@ -148,3 +146,5 @@ def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
 
     assert outputs[0][-2] == ''
     assert outputs[0][-1] == ''
+
+

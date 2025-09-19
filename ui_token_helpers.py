@@ -150,7 +150,7 @@ def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth') -> Tuple[str, st
     return status, markdown
 
 @ui_error_wrapper
-def start_campaign(token_files, leads_file, leads_per_account, send_delay_seconds, mode,
+def start_campaign(token_files, leads_file, send_delay_seconds, mode,
                    email_content_mode, attachment_folder, invoice_format,
                    support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None,
                    auth_mode: str = 'oauth'):
@@ -168,7 +168,6 @@ def start_campaign(token_files, leads_file, leads_per_account, send_delay_second
     events = campaign_events(
         token_files=token_files,
         leads_file=leads_file,
-        leads_per_account=leads_per_account,
         send_delay_seconds=send_delay_seconds,
         mode=mode,
         content_template=content_template,
@@ -211,6 +210,7 @@ def start_campaign(token_files, leads_file, leads_per_account, send_delay_second
 
     # Final emit to ensure summary is visible
     yield _build_output(log_lines, status, summary or "Completed") + (gmass_status, gmass_markdown)
+
 
 
 

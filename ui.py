@@ -6,10 +6,8 @@ from mailer import update_file_stats
 from content import SENDER_NAME_TYPES, DEFAULT_SENDER_NAME_TYPE
 from ui_token_helpers import analyze_token_files, start_campaign, build_gmass_preview, gmass_rows_to_markdown, fetch_mailbox_counts
 
-
 def _leads_status(leads_file):
     return update_file_stats([], leads_file)[1]
-
 
 def _describe_attachment_folder(path: str) -> str:
     if not path:
@@ -31,14 +29,12 @@ def _describe_attachment_folder(path: str) -> str:
 
     return f"{len(files)} file(s) detected in {folder}"
 
-
 def _map_content_template(choice: str) -> str:
     if choice == "Own_last":
         return "gmass_inboxed"
     if choice == "R1_Tag":
         return "r1_tag"
     return choice
-
 
 def _gmass_preview_update(mode_value, token_files, auth_mode):
     if (mode_value or '').lower() != 'gmass':
@@ -47,7 +43,6 @@ def _gmass_preview_update(mode_value, token_files, auth_mode):
     status, rows = build_gmass_preview(mode_value, token_files, auth_mode=auth_mode)
     markdown = gmass_rows_to_markdown(rows)
     return gr.update(visible=True), status, markdown
-
 
 def gradio_ui():
     with gr.Blocks(title="Simple Gmail REST Mailer") as demo:
@@ -102,12 +97,6 @@ def gradio_ui():
                     lines=2
                 )
                 leads_file.change(_leads_status, inputs=leads_file, outputs=leads_stats)
-
-                leads_per_account = gr.Number(
-                    label='Leads per Account (Leads Mode)',
-                    value=10,
-                    precision=0
-                )
 
                 send_delay_seconds = gr.Number(
                     label='Delay Between Emails (seconds)',
@@ -223,7 +212,6 @@ def gradio_ui():
             inputs=[
                 token_files,
                 leads_file,
-                leads_per_account,
                 send_delay_seconds,
                 mode,
                 email_content_mode,
@@ -241,13 +229,13 @@ def gradio_ui():
 
     return demo
 
-
 def main():
     app = gradio_ui()
     app.launch()
 
-
 if __name__ == "__main__":
     main()
+
+
 
 
