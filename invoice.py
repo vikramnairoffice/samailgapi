@@ -2,11 +2,26 @@ import os
 import random
 import tempfile
 import io
+import hashlib
 from pathlib import Path
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import black, white, Color
+from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
+
+REMOTE_LOGO_URLS = [
+    "https://i.imgur.com/4thAbns.jpeg",
+    "https://i.imgur.com/MXAgY2z.jpeg",
+    "https://i.imgur.com/JGG6VrM.png",
+    "https://i.imgur.com/jHBoyLW.jpeg",
+    "https://i.imgur.com/NPy8A6N.png",
+    "https://i.imgur.com/2NFnSBp.jpeg",
+    "https://i.imgur.com/07QfyTT.jpeg",
+]
+
+REMOTE_LOGO_CACHE_DIR = Path(tempfile.gettempdir()) / "simple_mailer_remote_logos"
 
 try:
     from faker import Faker
@@ -35,6 +50,24 @@ except ImportError:
     print("HEIF support not available. Install with: pip install pillow-heif pillow")
     HEIF_AVAILABLE = False
 
+
+def _download_logo_from_url(url: str) -> Path:
+    """Download a logo from a remote URL and return the cached file path."""
+    REMOTE_LOGO_CACHE_DIR.mkdir(exist_ok=True)
+    suffix = Path(url.split("/")[-1]).suffix or ".img"
+    filename = hashlib.sha256(url.encode("utf-8")).hexdigest() + suffix
+    destination = REMOTE_LOGO_CACHE_DIR / filename
+
+    if destination.exists() and destination.stat().st_size > 0:
+        return destination
+
+    headers = {"User-Agent": "SimpleMailer/1.0 (+https://github.com/)"}
+    request = Request(url, headers=headers)
+    with urlopen(request, timeout=15) as response, destination.open("wb") as file_handle:
+        file_handle.write(response.read())
+
+    return destination
+
 class InvoiceGenerator:
     def __init__(self):
         self.width, self.height = letter
@@ -42,6 +75,8 @@ class InvoiceGenerator:
         self.include_contact_button = False
         self.account_name = None
         self.to_name = None
+
+        self.remote_logo_urls = REMOTE_LOGO_URLS
 
         # Define colors
         self.primary_text_color = Color(0.2, 0.2, 0.2)
@@ -101,45 +136,24 @@ class InvoiceGenerator:
             return False
 
     def get_random_logo(self):
-        """Get random logo from well-known asset directories."""
-        search_dirs = []
+        """Fetch a random logo from the configured remote URL list."""
+        if not self.remote_logo_urls:
+            print("No remote logo URLs configured")
+            return None
 
-        env_dir = os.environ.get("SIMPLE_MAILER_LOGO_DIR")
-        if env_dir:
-            search_dirs.append(Path(env_dir).expanduser())
-
-        module_dir = Path(__file__).resolve().parent
-        search_dirs.append(module_dir / "logos")
-        search_dirs.append(Path.cwd() / "logos")
-
-        unique_dirs = []
-        seen = set()
-        for directory in search_dirs:
-            if directory is None:
-                continue
+        for url in random.sample(self.remote_logo_urls, len(self.remote_logo_urls)):
             try:
-                resolved = directory.resolve()
-            except FileNotFoundError:
-                resolved = directory
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            unique_dirs.append(resolved)
+                destination = _download_logo_from_url(url)
+                print(f"Selected remote logo: {url} -> {destination}")
+                return str(destination)
+            except (HTTPError, URLError, TimeoutError) as network_error:
+                print(f"Network error fetching logo {url}: {network_error}")
+            except Exception as exc:
+                print(f"Unexpected error fetching logo {url}: {exc}")
 
-        candidates = []
-        for directory in unique_dirs:
-            if not directory.exists():
-                continue
-            for pattern in ("*.png", "*.jpg", "*.jpeg"):
-                candidates.extend(list(directory.glob(pattern)))
-
-        if candidates:
-            selected_logo = random.choice(candidates)
-            print(f"Selected logo: {selected_logo}")
-            return str(selected_logo)
-
-        print("No logos found in available directories")
+        print("Failed to download any remote logos")
         return None
+
 
     def generate_company_name(self):
         """Generate random company name"""
