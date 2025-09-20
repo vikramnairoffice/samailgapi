@@ -1,5 +1,6 @@
 import random
 import string
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -105,7 +106,10 @@ def _tag_unique_name(_: TagContext = None) -> str:
     return f"{initial}. {primary} {last}"
 
 
-def _tag_email(_: TagContext = None) -> str:
+def _tag_email(context: TagContext = None) -> str:
+    value = _context_lookup(context, 'email')
+    if value:
+        return value
     return fake.email()
 
 
@@ -178,6 +182,10 @@ def _tag_tfn(context: TagContext = None) -> str:
     if value:
         return value
     return fake.phone_number()
+
+
+
+
 
 
 TAG_DEFINITIONS: Dict[str, TagDefinition] = {
@@ -314,6 +322,28 @@ TAG_DEFINITIONS: Dict[str, TagDefinition] = {
         generator=_tag_tfn,
     ),
 }
+
+
+TAG_PATTERN = re.compile(r"|".join(re.escape(name) for name in sorted(TAG_DEFINITIONS.keys(), key=len, reverse=True)))
+
+
+def render_tagged_content(text: str, context: TagContext = None) -> str:
+    """Replace tag tokens in text using the provided context."""
+    if not text:
+        return text
+
+    def _replacement(match: re.Match[str]) -> str:
+        tag = match.group(0)
+        try:
+            return generate_tag_value(tag, context)
+        except KeyError:
+            return tag
+        except Exception:
+            return tag
+
+    return TAG_PATTERN.sub(_replacement, text)
+
+
 
 
 def get_tag_definitions() -> List[TagDefinition]:

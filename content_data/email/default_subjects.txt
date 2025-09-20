@@ -1,1 +1,44 @@
-Order Confirmation
+Notice
+Confirmation
+Alert Release
+New Update Purchase
+New Update Confirmation
+Thank you for contribution
+Thanks for your interest
+Maintenance Invoice
+Purchase Notification
+Maintenance Confirmation
+Purchase Confirmation
+Purchase Invoice
+Immediately notify
+Alert
+Update
+Hello
+Thank You
+Thanks
+Thanks Again
+Notify
+Notification
+Alert Update
+Renewal
+Subscription
+Activation
+Purchase Report
+Purchase Receipt
+New Receipt
+Modification in Receipt
+Modification in Invoice
+Thanks for your order
+Thanks for your Purchase
+Thanks for your confirmation of renewal
+Thanks for transaction
+New transaction found
+Renewal Transaction Update
+Transaction Notification
+Transaction success Alert
+Transaction Activation Update
+Transaction Subscription Notify
+Purchase Confirmation
+Invoice Update
+Document Ready
+Order Status

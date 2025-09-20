@@ -2,10 +2,13 @@
 
 import traceback
 import requests
+from functools import wraps
 from typing import Iterable, List, Tuple
 from urllib.parse import quote
 
 from mailer import campaign_events, update_file_stats, load_accounts, fetch_mailbox_totals_app_password
+from content import generate_sender_name
+from manual_mode import ManualConfig, parse_extra_tags, to_attachment_specs, preview_attachment
 
 
 def analyze_token_files(token_files, auth_mode: str = 'oauth') -> str:
@@ -14,22 +17,33 @@ def analyze_token_files(token_files, auth_mode: str = 'oauth') -> str:
     return token_msg
 
 
-def _build_output(log_lines: List[str], status: str, summary: str) -> Tuple[str, str, str]:
-    """Helper to prepare consistent UI output."""
-    log_text = "\n".join(log_lines[-200:])  # keep output manageable
-    return log_text, status, summary
+def _build_output(log_lines: List[str], status: str, summary: str) -> str:
+    """Helper to prepare consistent UI output for the consolidated run panel."""
+    clipped_logs = log_lines[-200:]
+    log_text = "\n".join(clipped_logs).strip()
+    status_text = (status or 'Idle').strip() or 'Idle'
+    sections = [f"Status: {status_text}"]
+    if summary:
+        sections.append(f"Summary: {summary}")
+    if log_text:
+        sections.extend(['', 'Log:', log_text])
+    return "\n".join(sections)
 
 
-def ui_error_wrapper(func):
+def ui_error_wrapper(*, extra_outputs: Tuple[str, ...] = ()):
     """Wrap a generator function and surface exceptions to the UI."""
-    def wrapper(*args, **kwargs):
-        try:
-            yield from func(*args, **kwargs)
-        except Exception as exc:  # pragma: no cover - defensive guard
-            details = traceback.format_exc()
-            message = f"Error: {exc}\n\n{details}"
-            yield _build_output([message], "", "Failed") + ("", "")
-    return wrapper
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                yield from func(*args, **kwargs)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                details = traceback.format_exc()
+                message = f"Error: {exc}\n\n{details}"
+                combined = _build_output([message], "", "Failed")
+                yield (combined, *extra_outputs)
+        return wrapper
+    return decorator
 
 
 def _format_progress(event) -> str:
@@ -149,7 +163,143 @@ def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth') -> Tuple[str, st
     markdown = mailbox_rows_to_markdown(rows)
     return status, markdown
 
-@ui_error_wrapper
+@ui_error_wrapper()
+def start_manual_campaign(
+    token_files,
+    leads_file,
+    send_delay_seconds,
+    mode,
+    manual_subject,
+    manual_body,
+    manual_body_is_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    manual_sender_name,
+    manual_change_name,
+    manual_sender_type,
+    advance_header=False,
+    force_header=False,
+    auth_mode: str = 'oauth',
+):
+    """Manual mode sender wired to the shared campaign generator."""
+    log_lines: List[str] = []
+    status = "Waiting"
+    summary = ""
+
+    extra_tags = parse_extra_tags(manual_extra_tags)
+    inline_html = manual_inline_html if manual_attachment_enabled else ''
+    inline_name = manual_inline_name if manual_attachment_enabled else ''
+    attachment_specs = to_attachment_specs(
+        manual_attachment_files if manual_attachment_enabled else [],
+        inline_html,
+        inline_name,
+    )
+
+    normalized_mode = (manual_attachment_mode or 'original').strip().lower().replace(' ', '_')
+
+    manual_config = ManualConfig(
+        enabled=True,
+        subject=manual_subject or '',
+        body=manual_body or '',
+        body_is_html=bool(manual_body_is_html),
+        tfn=manual_tfn or '',
+        extra_tags=extra_tags,
+        attachments=attachment_specs,
+        attachment_mode=normalized_mode,
+        attachments_enabled=bool(manual_attachment_enabled),
+        sender_name=manual_sender_name or '',
+        change_name_every_time=bool(manual_change_name),
+        sender_name_type=manual_sender_type or 'business',
+    )
+
+    events = campaign_events(
+        token_files=token_files,
+        leads_file=leads_file,
+        send_delay_seconds=send_delay_seconds,
+        mode=mode,
+        content_template='own_proven',
+        subject_template='own_proven',
+        body_template='own_proven',
+        email_content_mode='Attachment',
+        attachment_format='pdf',
+        invoice_format='pdf',
+        support_number='',
+        advance_header=advance_header,
+        force_header=force_header,
+        sender_name_type=manual_sender_type or 'business',
+        attachment_folder='',
+        auth_mode=auth_mode,
+        manual_config=manual_config,
+    )
+
+    for event in events:
+        kind = event.get('kind')
+        if kind == 'token_error':
+            message = f"Token issue: {event['message']}"
+            log_lines.append(message)
+            status = message
+        elif kind == 'fatal':
+            summary = event['message']
+            log_lines.append(summary)
+            yield _build_output(log_lines, status, summary)
+            return
+        elif kind == 'progress':
+            status = f"Total {event['successes']}/{event['total']}"
+            log_lines.append(_format_progress(event))
+        elif kind == 'done':
+            summary = event['message']
+        else:
+            log_lines.append(str(event))
+
+        yield _build_output(log_lines, status, summary)
+
+    yield _build_output(log_lines, status, summary or "Completed")
+
+
+def manual_random_sender_name(sender_type: str = 'business') -> str:
+    return generate_sender_name(sender_type or 'business')
+
+
+def manual_attachment_listing(files, inline_html='', inline_name=''):
+    """Return dropdown choices and initial preview for manual attachments."""
+    specs = to_attachment_specs(files, inline_html, inline_name)
+    names = [spec.display_name for spec in specs]
+    if specs:
+        kind, payload = preview_attachment(specs[0])
+        if kind == 'html':
+            html_payload, text_payload = payload, ''
+        else:
+            html_payload, text_payload = '', payload
+        default = names[0]
+    else:
+        html_payload = ''
+        text_payload = ''
+        default = None
+    return names, default, html_payload, text_payload
+
+
+def manual_attachment_preview_content(selected_name: str, files, inline_html='', inline_name=''):
+    """Return HTML/text preview content for the selected manual attachment."""
+    specs = to_attachment_specs(files, inline_html, inline_name)
+    target = None
+    for spec in specs:
+        if spec.display_name == selected_name:
+            target = spec
+            break
+    if target is None:
+        return '', ''
+    kind, payload = preview_attachment(target)
+    if kind == 'html':
+        return payload, ''
+    return '', payload
+
+
+@ui_error_wrapper(extra_outputs=("", ""))
 def start_campaign(token_files, leads_file, send_delay_seconds, mode,
                    email_content_mode, attachment_folder, invoice_format,
                    support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None,
@@ -182,6 +332,7 @@ def start_campaign(token_files, leads_file, send_delay_seconds, mode,
         sender_name_type=sender_name_type,
         attachment_folder=attachment_folder,
         auth_mode=auth_mode,
+        manual_config=None,
     )
 
     mode_lower = (mode or '').lower()
@@ -198,7 +349,7 @@ def start_campaign(token_files, leads_file, send_delay_seconds, mode,
         elif kind == 'fatal':
             summary = event['message']
             log_lines.append(summary)
-            yield _build_output(log_lines, status, summary) + (gmass_status, gmass_markdown)
+            yield (_build_output(log_lines, status, summary), gmass_status, gmass_markdown)
             return
         elif kind == 'progress':
             status = f"Total {event['successes']}/{event['total']}"
@@ -208,10 +359,10 @@ def start_campaign(token_files, leads_file, send_delay_seconds, mode,
         else:
             log_lines.append(str(event))
 
-        yield _build_output(log_lines, status, summary) + (gmass_status, gmass_markdown)
+        yield (_build_output(log_lines, status, summary), gmass_status, gmass_markdown)
 
     # Final emit to ensure summary is visible
-    yield _build_output(log_lines, status, summary or "Completed") + (gmass_status, gmass_markdown)
+    yield (_build_output(log_lines, status, summary or "Completed"), gmass_status, gmass_markdown)
 
 
 

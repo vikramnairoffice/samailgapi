@@ -111,11 +111,12 @@ def test_start_campaign_appends_gmass_preview(monkeypatch):
 
     outputs = list(itertools.islice(generator, 3))
 
-    assert len(outputs[0]) == 5
-    assert outputs[0][-2] == preview_status
-    assert outputs[0][-1] == '- [niao78@gmail.com](https://www.gmass.co/inbox?q=niao78)'
-    assert outputs[-1][-2] == preview_status
-    assert outputs[-1][-1] == '- [niao78@gmail.com](https://www.gmass.co/inbox?q=niao78)'
+    assert len(outputs[0]) == 3
+    assert outputs[0][1] == preview_status
+    assert outputs[0][2] == '- [niao78@gmail.com](https://www.gmass.co/inbox?q=niao78)'
+    assert outputs[-1][1] == preview_status
+    assert outputs[-1][2] == '- [niao78@gmail.com](https://www.gmass.co/inbox?q=niao78)'
+    assert outputs[0][0].startswith('Status: Total')
 
 
 def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
@@ -144,7 +145,7 @@ def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
 
     outputs = list(generator)
 
-    assert outputs[0][-2] == ''
-    assert outputs[0][-1] == ''
+    assert outputs[0][1] == ''
+    assert outputs[0][2] == ''
 
 

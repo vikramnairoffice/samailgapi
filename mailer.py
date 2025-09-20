@@ -29,6 +29,7 @@ from content import (
 )
 from content_data.content_loader import load_default_gmass_recipients
 from invoice import InvoiceGenerator
+from manual_mode import ManualConfig
 
 GMAIL_PROFILE_URL = "https://gmail.googleapis.com/gmail/v1/users/me/profile"
 GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
@@ -121,12 +122,13 @@ def load_gmail_token(token_path):
 
 
 def _build_mime_message(from_header: str, to_email: str, subject: str, body: str, attachments=None,
-                        advance_header: bool = False, force_header: bool = False):
+                        advance_header: bool = False, force_header: bool = False, body_subtype: str = 'plain'):
     message = MIMEMultipart()
     message['To'] = to_email
     message['From'] = from_header or 'me'
     message['Subject'] = subject
-    message.attach(MIMEText(body, 'plain'))
+    subtype = 'html' if str(body_subtype).lower() == 'html' else 'plain'
+    message.attach(MIMEText(body, subtype))
 
     if advance_header:
         message.add_header('X-Sender', from_header)
@@ -150,7 +152,7 @@ def _build_mime_message(from_header: str, to_email: str, subject: str, body: str
 
 
 def send_gmail_message(creds, sender_email, to_email, subject, body, attachments=None,
-                        advance_header=False, force_header=False):
+                        advance_header=False, force_header=False, body_subtype: str = 'plain'):
     """Send an email via the Gmail REST API using existing credentials."""
     if not creds or not getattr(creds, 'token', None):
         raise RuntimeError("Valid Gmail credentials with an access token are required to send messages.")
@@ -159,7 +161,8 @@ def send_gmail_message(creds, sender_email, to_email, subject, body, attachments
     message['To'] = to_email
     message['From'] = sender_email or 'me'
     message['Subject'] = subject
-    message.attach(MIMEText(body, 'plain'))
+    subtype = 'html' if str(body_subtype).lower() == 'html' else 'plain'
+    message.attach(MIMEText(body, subtype))
 
     if advance_header:
         message.add_header('X-Sender', sender_email)
@@ -242,9 +245,9 @@ def fetch_mailbox_totals_app_password(email: str, password: str) -> tuple[int, i
 
 
 def send_app_password_message(login_email: str, from_header: str, app_password: str, to_email: str, subject: str, body: str,
-                             attachments=None, advance_header: bool = False, force_header: bool = False) -> None:
+                             attachments=None, advance_header: bool = False, force_header: bool = False, body_subtype: str = 'plain') -> None:
     attachments = attachments or {}
-    message = _build_mime_message(from_header or login_email, to_email, subject, body, attachments, advance_header, force_header)
+    message = _build_mime_message(from_header or login_email, to_email, subject, body, attachments, advance_header, force_header, body_subtype)
     context = ssl.create_default_context()
     with smtplib.SMTP(GMAIL_SMTP_HOST, GMAIL_SMTP_PORT) as smtp:
         smtp.ehlo()
@@ -421,8 +424,20 @@ def compose_email(account_email: str, config: Dict[str, Any]) -> Tuple[str, str,
 
 def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str, Any], invoice_gen: InvoiceGenerator) -> Tuple[bool, str]:
     """Send one email and return (success, message)."""
-    subject, body, from_header = compose_email(account['email'], config)
-    attachments = build_attachments(config, invoice_gen, lead_email)
+    manual_config = config.get('manual_config')
+    body_subtype = 'plain'
+
+    if isinstance(manual_config, ManualConfig) and getattr(manual_config, 'enabled', False):
+        context = manual_config.build_context(lead_email)
+        subject = manual_config.render_subject(context)
+        body, body_subtype = manual_config.render_body(context)
+        context['content'] = body
+        attachments = manual_config.build_attachments(context)
+        sender_name = manual_config.resolve_sender_name(config.get('sender_name_type') or 'business')
+        from_header = f"{sender_name} <{account['email']}>"
+    else:
+        subject, body, from_header = compose_email(account['email'], config)
+        attachments = build_attachments(config, invoice_gen, lead_email)
 
     try:
         advance_flag = bool(config.get('advance_header'))
@@ -439,6 +454,7 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
                 attachments=attachments,
                 advance_header=advance_flag,
                 force_header=force_flag,
+                body_subtype=body_subtype,
             )
         else:
             send_gmail_message(
@@ -450,10 +466,12 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
                 attachments,
                 advance_header=advance_flag,
                 force_header=force_flag,
+                body_subtype=body_subtype,
             )
         return True, f"Sent to {lead_email}"
     except Exception as exc:
         return False, str(exc)
+
 
 
 def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], config: Dict[str, Any], send_delay_seconds: float) -> Iterable[Dict[str, Any]]:
@@ -520,7 +538,7 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_sec
                     body_template: Optional[str] = None, email_content_mode: str = "Attachment", attachment_format: str = "pdf",
                     invoice_format: str = "pdf", support_number: str = "", sender_name_type: str = "",
                     attachment_folder: str = "", advance_header: bool = False, force_header: bool = False,
-                    auth_mode: str = "oauth") -> Iterable[Dict[str, Any]]:
+                    auth_mode: str = "oauth", manual_config: Optional[ManualConfig] = None) -> Iterable[Dict[str, Any]]:
     """High-level generator that validates inputs and yields campaign events."""
     accounts, token_errors = load_accounts(token_files, auth_mode=auth_mode)
     for error in token_errors:
@@ -557,6 +575,7 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_sec
         'sender_name_type': sender_name_type,
         'advance_header': advance_header,
         'force_header': force_header,
+        'manual_config': manual_config,
     }
 
     try:

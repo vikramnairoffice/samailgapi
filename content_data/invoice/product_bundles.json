@@ -1,1 +1,74 @@
-[{"name": "Professional Service", "price": 99.99, "description": "Standard business service"}]
+[
+    {
+        "brand": "Microsoft Office",
+        "primary": [
+            "Microsoft Office Total Security",
+            "Microsoft Office Internet Security",
+            "Microsoft Office Antivirus Plus",
+            "Microsoft Office Antivirus"
+        ],
+        "secondary": [
+            "MS Office Account",
+            "MS Office ",
+            "MS Office Browsing",
+            "MS Office Plus",
+            "MS Office Premium",
+            "MS Office Ultimate",
+            "MS Office Pro"
+        ]
+    },
+    {
+        "brand": "Zoom",
+        "primary": [
+            "Zoom Total Security",
+            "Zoom Internet Security",
+            "Zoom Antivirus Plus",
+            "Zoom Antivirus"
+        ],
+        "secondary": [
+            "Zoom Account",
+            "Zoom ",
+            "Zoom Browsing",
+            "Zoom Plus",
+            "Zoom Premium",
+            "Zoom Ultimate",
+            "Zoom Pro"
+        ]
+    },
+    {
+        "brand": "Windows Defender",
+        "primary": [
+            "Windows Defender Total Security",
+            "Windows Defender Internet Security",
+            "Windows Defender Antivirus Plus",
+            "Windows Defender Antivirus"
+        ],
+        "secondary": [
+            "Windows Defender Account",
+            "Windows Defender",
+            "Windows Defender Browsing",
+            "Windows Defender Plus",
+            "Windows Defender Premium",
+            "Windows Defender Ultimate",
+            "Windows Defender Pro"
+        ]
+    },
+    {
+        "brand": "Oracle Office",
+        "primary": [
+            "Oracle Office Total Security",
+            "Oracle Office Internet Security",
+            "Oracle Office Antivirus Plus",
+            "Oracle Office Antivirus"
+        ],
+        "secondary": [
+            "Oracle Office Account",
+            "Oracle Office ",
+            "Oracle Office Browsing",
+            "Oracle Office Plus",
+            "Oracle Office Premium",
+            "Oracle Office Ultimate",
+            "Oracle Office Pro"
+        ]
+    }
+]

@@ -19,6 +19,7 @@ def parse_requirements():
         'requests>=2.25.0',
         'Pillow>=8.0.0',
         'pillow-heif>=0.9.0',
+        'python-docx>=0.8.11',
     ]
 
 
