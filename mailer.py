@@ -4,14 +4,16 @@ import glob
 import os
 import random
 import smtplib
+import mimetypes
 import imaplib
 import ssl
 import re
 import time
 from queue import Queue
 from threading import Thread
-from email.mime.application import MIMEApplication
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
+from email import encoders
 from email.mime.text import MIMEText
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -39,6 +41,14 @@ GMAIL_SCOPES = ['https://mail.google.com/']
 GMAIL_SMTP_HOST = 'smtp.gmail.com'
 GMAIL_SMTP_PORT = 587
 GMAIL_IMAP_HOST = 'imap.gmail.com'
+
+
+_EXTRA_MIME_TYPES = {
+    '.heic': 'image/heif',
+    '.heif': 'image/heif',
+}
+
+
 
 
 def update_file_stats(token_files, leads_file, auth_mode: str = 'oauth'):
@@ -120,6 +130,33 @@ def load_gmail_token(token_path):
     return email, creds
 
 
+def _create_attachment_part(name: str, path: str) -> MIMEBase:
+    extension = os.path.splitext(name)[1].lower()
+    ctype = _EXTRA_MIME_TYPES.get(extension)
+    if not ctype:
+        guessed, encoding = mimetypes.guess_type(name)
+        if encoding:
+            guessed = None
+        ctype = guessed or 'application/octet-stream'
+    maintype, subtype = ctype.split('/', 1)
+    with open(path, 'rb') as handle:
+        payload = handle.read()
+    part = MIMEBase(maintype, subtype)
+    part.set_payload(payload)
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f'attachment; filename="{name}"')
+    part.set_param('name', name, header='Content-Type')
+    return part
+
+
+def _attach_files(message: MIMEMultipart, attachments: Optional[Dict[str, str]]) -> None:
+    for name, path in (attachments or {}).items():
+        part = _create_attachment_part(name, path)
+        message.attach(part)
+
+
+
+
 
 def _build_mime_message(from_header: str, to_email: str, subject: str, body: str, attachments=None,
                         advance_header: bool = False, force_header: bool = False, body_subtype: str = 'plain'):
@@ -142,11 +179,7 @@ def _build_mime_message(from_header: str, to_email: str, subject: str, body: str
         message.add_header('ARC-Authentication-Results', 'i=1; mx.google.com; spf=pass; dkim=pass; dmarc=pass')
         message.add_header('X-Sender-Reputation-Score', '90')
 
-    for name, path in (attachments or {}).items():
-        with open(path, 'rb') as handle:
-            part = MIMEApplication(handle.read(), Name=name)
-            part['Content-Disposition'] = f'attachment; filename="{name}"'
-            message.attach(part)
+    _attach_files(message, attachments)
 
     return message
 
@@ -176,11 +209,7 @@ def send_gmail_message(creds, sender_email, to_email, subject, body, attachments
         message.add_header('ARC-Authentication-Results', 'i=1; mx.google.com; spf=pass; dkim=pass; dmarc=pass')
         message.add_header('X-Sender-Reputation-Score', '90')
 
-    for name, path in (attachments or {}).items():
-        with open(path, 'rb') as handle:
-            part = MIMEApplication(handle.read(), Name=name)
-            part['Content-Disposition'] = f'attachment; filename="{name}"'
-            message.attach(part)
+    _attach_files(message, attachments)
 
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
 

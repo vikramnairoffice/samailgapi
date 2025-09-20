@@ -14,7 +14,55 @@ from ui_token_helpers import (
     manual_attachment_listing,
     manual_attachment_preview_content,
     manual_random_sender_name,
+    run_unified_campaign,
 )
+
+
+_MANUAL_DOC_OPTIONS = ["PDF", "Flat PDF", "Docx"]
+_MANUAL_IMAGE_OPTIONS = ["PNG", "HEIF"]
+_MANUAL_CATEGORY_OPTIONS = ["Doc", "Image", "Keep Original"]
+
+
+def _normalize_manual_mode(label: str) -> str:
+    if not label:
+        return 'original'
+    normalized = label.strip().lower().replace(' ', '_')
+    if normalized == 'keep_original':
+        return 'original'
+    if normalized == 'doc':
+        return 'docx'
+    return normalized
+
+
+def _manual_category_change(category, doc_choice, image_choice):
+    choice = (category or '').strip().lower().replace(' ', '_')
+    if choice == 'doc':
+        value = doc_choice or _MANUAL_DOC_OPTIONS[0]
+        return (
+            gr.update(visible=True, value=value),
+            gr.update(visible=False),
+            _normalize_manual_mode(value),
+        )
+    if choice == 'image':
+        value = image_choice or _MANUAL_IMAGE_OPTIONS[0]
+        return (
+            gr.update(visible=False),
+            gr.update(visible=True, value=value),
+            _normalize_manual_mode(value),
+        )
+    return (
+        gr.update(visible=False),
+        gr.update(visible=False),
+        'original',
+    )
+
+
+def _manual_doc_choice(value):
+    return _normalize_manual_mode(value)
+
+
+def _manual_image_choice(value):
+    return _normalize_manual_mode(value)
 
 
 def _leads_status(leads_file):
@@ -61,15 +109,32 @@ def _gmass_preview_update(mode_value, token_files, auth_mode):
 
 def _manual_toggle_attachments(enabled):
     visible = bool(enabled)
+    if not visible:
+        return (
+            gr.update(visible=False, value=None),
+            gr.update(visible=False, value=_MANUAL_CATEGORY_OPTIONS[0]),
+            gr.update(visible=False, value=_MANUAL_DOC_OPTIONS[0]),
+            gr.update(visible=False, value=_MANUAL_IMAGE_OPTIONS[0]),
+            gr.update(value='original'),
+            gr.update(visible=False, choices=[], value=None),
+            gr.update(visible=False, value=""),
+            gr.update(visible=False, value=""),
+            gr.update(visible=False, value=''),
+            gr.update(visible=False, value=""),
+        )
     return (
-        gr.update(visible=visible, value=None),
-        gr.update(visible=visible),
+        gr.update(visible=True, value=None),
+        gr.update(visible=True, value=_MANUAL_CATEGORY_OPTIONS[0]),
+        gr.update(visible=True, value=_MANUAL_DOC_OPTIONS[0]),
+        gr.update(visible=False, value=_MANUAL_IMAGE_OPTIONS[0]),
+        gr.update(value=_normalize_manual_mode(_MANUAL_DOC_OPTIONS[0])),
         gr.update(visible=False, choices=[], value=None),
         gr.update(visible=False, value=""),
         gr.update(visible=False, value=""),
-        gr.update(visible=visible, value='inline.html' if visible else ''),
-        gr.update(visible=visible, value=""),
+        gr.update(visible=True, value='inline.html'),
+        gr.update(visible=True, value=""),
     )
+
 
 def _manual_refresh_attachments(files, inline_html, inline_name):
     names, default, html_payload, text_payload = manual_attachment_listing(files, inline_html, inline_name)
@@ -171,8 +236,9 @@ def gradio_ui():
                         label='GMass Deliverability URLs'
                     )
             with gr.Column():
+                active_ui_mode = gr.State('automated')
                 with gr.Tabs() as ui_mode_tabs:
-                    with gr.TabItem('Automated Mode'):
+                    with gr.TabItem('Automated Mode', id='automated') as automated_tab:
                         subject_template_choice = gr.Radio(
                             ["own_proven", "Own_last", "R1_Tag"],
                             value="own_proven",
@@ -240,7 +306,7 @@ def gradio_ui():
                             placeholder="Optional"
                         )
 
-                    with gr.TabItem('Manual Mode'):
+                    with gr.TabItem('Manual Mode', id='manual') as manual_tab:
                         manual_sender_type = gr.Radio(
                             SENDER_NAME_TYPES,
                             value=DEFAULT_SENDER_NAME_TYPE,
@@ -287,11 +353,29 @@ def gradio_ui():
                             label="Include Attachment",
                             value=False
                         )
-                        manual_attachment_mode = gr.Radio(
-                            ["Original", "PDF", "Flat PDF", "Image", "Docx"],
-                            value="Original",
-                            label="Convert Attachments To",
+                        manual_attachment_category = gr.Radio(
+                            _MANUAL_CATEGORY_OPTIONS,
+                            value=_MANUAL_CATEGORY_OPTIONS[0],
+                            label="Attachment Conversion Type",
                             visible=False
+                        )
+                        manual_doc_format = gr.Radio(
+                            _MANUAL_DOC_OPTIONS,
+                            value=_MANUAL_DOC_OPTIONS[0],
+                            label="Document Formats",
+                            visible=False
+                        )
+                        manual_image_format = gr.Radio(
+                            _MANUAL_IMAGE_OPTIONS,
+                            value=_MANUAL_IMAGE_OPTIONS[0],
+                            label="Image Formats",
+                            visible=False
+                        )
+                        manual_attachment_mode = gr.Textbox(
+                            value=_normalize_manual_mode(_MANUAL_DOC_OPTIONS[0]),
+                            label="Resolved Attachment Mode",
+                            visible=False,
+                            interactive=False
                         )
                         manual_inline_name = gr.Textbox(
                             label="Inline Attachment Name",
@@ -327,8 +411,6 @@ def gradio_ui():
                         )
                         with gr.Accordion("Available Tags", open=False):
                             gr.Markdown(tag_table_md)
-                        manual_start_btn = gr.Button("Start Manual Send", variant="primary")
-
                 advance_header = gr.Checkbox(
                     label="Advanced Header Pack",
                     value=False,
@@ -341,6 +423,9 @@ def gradio_ui():
                     info="Forges SPF/DKIM/DMARC success markers for controlled tests"
                 )
 
+        automated_tab.select(lambda: 'automated', outputs=active_ui_mode)
+        manual_tab.select(lambda: 'manual', outputs=active_ui_mode)
+
         manual_pick_sender.click(
             manual_random_sender_name,
             inputs=manual_sender_type,
@@ -352,6 +437,9 @@ def gradio_ui():
             inputs=manual_attachment_enabled,
             outputs=[
                 manual_attachment_files,
+                manual_attachment_category,
+                manual_doc_format,
+                manual_image_format,
                 manual_attachment_mode,
                 manual_attachment_dropdown,
                 manual_preview_html,
@@ -359,6 +447,24 @@ def gradio_ui():
                 manual_inline_name,
                 manual_inline_html,
             ],
+        )
+
+        manual_attachment_category.change(
+            _manual_category_change,
+            inputs=[manual_attachment_category, manual_doc_format, manual_image_format],
+            outputs=[manual_doc_format, manual_image_format, manual_attachment_mode],
+        )
+
+        manual_doc_format.change(
+            _manual_doc_choice,
+            inputs=manual_doc_format,
+            outputs=manual_attachment_mode,
+        )
+
+        manual_image_format.change(
+            _manual_image_choice,
+            inputs=manual_image_format,
+            outputs=manual_attachment_mode,
         )
 
         manual_attachment_files.change(
@@ -422,8 +528,9 @@ def gradio_ui():
         )
 
         start_btn.click(
-            start_campaign,
+            run_unified_campaign,
             inputs=[
+                active_ui_mode,
                 token_files,
                 leads_file,
                 send_delay_seconds,
@@ -432,24 +539,6 @@ def gradio_ui():
                 attachment_folder,
                 invoice_format,
                 support_number,
-                advance_header,
-                force_header,
-                sender_name_type,
-                content_template_value,
-                subject_template_value,
-                body_template_value,
-                auth_mode,
-            ],
-            outputs=[run_output, gmass_status, gmass_urls_display]
-        )
-
-        manual_start_btn.click(
-            start_manual_campaign,
-            inputs=[
-                token_files,
-                leads_file,
-                send_delay_seconds,
-                mode,
                 manual_subject,
                 manual_body,
                 manual_body_is_html,
@@ -466,8 +555,12 @@ def gradio_ui():
                 advance_header,
                 force_header,
                 auth_mode,
+                sender_name_type,
+                content_template_value,
+                subject_template_value,
+                body_template_value,
             ],
-            outputs=[run_output],
+            outputs=[run_output, gmass_status, gmass_urls_display]
         )
 
     return demo
@@ -478,6 +571,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

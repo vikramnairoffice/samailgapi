@@ -365,6 +365,87 @@ def start_campaign(token_files, leads_file, send_delay_seconds, mode,
     yield (_build_output(log_lines, status, summary or "Completed"), gmass_status, gmass_markdown)
 
 
+@ui_error_wrapper(extra_outputs=("", ""))
+def run_unified_campaign(
+    active_ui_mode,
+    token_files,
+    leads_file,
+    send_delay_seconds,
+    mode,
+    email_content_mode,
+    attachment_folder,
+    invoice_format,
+    support_number,
+    manual_subject,
+    manual_body,
+    manual_body_is_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    manual_sender_name,
+    manual_change_name,
+    manual_sender_type,
+    advance_header=False,
+    force_header=False,
+    auth_mode: str = 'oauth',
+    sender_name_type=None,
+    content_template=None,
+    subject_template=None,
+    body_template=None,
+):
+    selected_mode = (active_ui_mode or 'automated').strip().lower()
+    if selected_mode == 'manual':
+        generator = start_manual_campaign(
+            token_files,
+            leads_file,
+            send_delay_seconds,
+            mode,
+            manual_subject,
+            manual_body,
+            manual_body_is_html,
+            manual_tfn,
+            manual_extra_tags,
+            manual_attachment_enabled,
+            manual_attachment_mode,
+            manual_attachment_files,
+            manual_inline_html,
+            manual_inline_name,
+            manual_sender_name,
+            manual_change_name,
+            manual_sender_type,
+            advance_header,
+            force_header,
+            auth_mode,
+        )
+        for output in generator:
+            yield (output, "", "")
+        return
+
+    generator = start_campaign(
+        token_files,
+        leads_file,
+        send_delay_seconds,
+        mode,
+        email_content_mode,
+        attachment_folder,
+        invoice_format,
+        support_number,
+        advance_header,
+        force_header,
+        sender_name_type,
+        content_template,
+        subject_template,
+        body_template,
+        auth_mode,
+    )
+    for output in generator:
+        yield output
+
+
 
 
 

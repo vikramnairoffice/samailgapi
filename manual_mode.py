@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import contextlib
 import shutil
 import tempfile
 import textwrap
@@ -12,10 +13,18 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageChops
+from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
+
+try:
+    import fitz  # type: ignore
+    PYMUPDF_AVAILABLE = True
+except ImportError:  # pragma: no cover - optional dependency
+    PYMUPDF_AVAILABLE = False
+    fitz = None  # type: ignore
 
 try:
     from docx import Document  # type: ignore
@@ -31,6 +40,8 @@ _TEXT_EXTENSIONS = {'.txt', '.csv', '.md', '.json', '.html', '.htm'}
 _HTML_EXTENSIONS = {'.html', '.htm'}
 _ATTACHMENT_ROOT = Path(tempfile.gettempdir()) / "simple_mailer_manual"
 _ATTACHMENT_ROOT.mkdir(parents=True, exist_ok=True)
+
+_PAGE_MARGIN = 36
 
 
 class _HTMLTextExtractor(HTMLParser):
@@ -96,8 +107,22 @@ def _text_to_pdf(text: str, destination: Path) -> None:
     pdf.save()
 
 
-def _text_to_image(text: str, destination: Path, image_format: str = 'PNG') -> None:
+def _ensure_heif_plugin() -> None:
+    try:
+        import pillow_heif  # type: ignore  # noqa: F401 - registers HEIF plugin
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError("Install 'pillow-heif' to enable HEIF conversion.") from exc
+
+
+def _save_image(image: Image.Image, destination: Path, image_format: str = 'PNG') -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
+    fmt = (image_format or 'PNG').upper()
+    if fmt == 'HEIF':
+        _ensure_heif_plugin()
+    image.convert('RGB').save(destination, format=fmt)
+
+
+def _text_to_image(text: str, destination: Path, image_format: str = 'PNG') -> None:
     font = ImageFont.load_default()
     lines = _wrap_lines(text, width=60)
     max_width = max((font.getbbox(line)[2] for line in lines), default=0)
@@ -110,12 +135,7 @@ def _text_to_image(text: str, destination: Path, image_format: str = 'PNG') -> N
     for line in lines:
         draw.text((20, y), line, fill='black', font=font)
         y += line_height
-    if image_format.upper() == 'HEIF':
-        try:
-            import pillow_heif  # type: ignore  # noqa: F401 - registers HEIF plugin
-        except ImportError as exc:  # pragma: no cover - optional dependency
-            raise RuntimeError("Install 'pillow-heif' to enable HEIF conversion.") from exc
-    image.save(destination, format=image_format)
+    _save_image(image, destination, image_format)
 
 
 def _image_to_pdf(image_path: Path, destination: Path) -> None:
@@ -136,6 +156,66 @@ def _image_to_pdf(image_path: Path, destination: Path) -> None:
     pdf.drawImage(ImageReader(str(image_path)), x, y, width=render_width, height=render_height, preserveAspectRatio=True)
     pdf.showPage()
     pdf.save()
+
+
+def _require_pymupdf() -> None:
+    if not PYMUPDF_AVAILABLE:
+        raise RuntimeError("Install 'pymupdf' to render HTML attachments correctly.")
+
+
+
+def _trim_rendered_image(image: Image.Image, padding: int = 12) -> Image.Image:
+    """Crop extra page whitespace after rendering HTML."""
+    rgb = image.convert('RGB')
+    background_color = rgb.getpixel((0, 0)) if rgb.size != (0, 0) else (255, 255, 255)
+    background = Image.new('RGB', rgb.size, background_color)
+    diff = ImageChops.difference(rgb, background)
+    bbox = diff.getbbox()
+    if not bbox:
+        return rgb.copy()
+    left, top, right, bottom = bbox
+    left = max(left - padding, 0)
+    top = max(top - padding, 0)
+    right = min(right + padding, rgb.width)
+    bottom = min(bottom + padding, rgb.height)
+    return rgb.crop((left, top, right, bottom))
+
+
+
+def _render_html_document(html: str) -> "fitz.Document":
+    _require_pymupdf()
+    width, height = letter
+    doc = fitz.open()
+    page = doc.new_page(width=width, height=height)
+    rect = fitz.Rect(_PAGE_MARGIN, _PAGE_MARGIN, width - _PAGE_MARGIN, height - _PAGE_MARGIN)
+    page.insert_htmlbox(rect, html)
+    return doc
+
+
+def _html_to_pdf_rendered(html: str, destination: Path) -> None:
+    _require_pymupdf()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    doc = _render_html_document(html)
+    try:
+        doc.save(destination)
+    finally:
+        doc.close()
+
+
+def _html_to_image(html: str, destination: Path, image_format: str = 'PNG', zoom: float = 2.0) -> None:
+    _require_pymupdf()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    doc = _render_html_document(html)
+    try:
+        page = doc.load_page(0)
+        matrix = fitz.Matrix(zoom, zoom)
+        pix = page.get_pixmap(matrix=matrix, alpha=False)
+        buffer = BytesIO(pix.tobytes("png"))
+        with Image.open(buffer) as rendered:
+            trimmed = _trim_rendered_image(rendered)
+            _save_image(trimmed, destination, image_format)
+    finally:
+        doc.close()
 
 
 def _text_to_docx(text: str, destination: Path) -> None:
@@ -285,23 +365,39 @@ def _render_attachment(spec: ManualAttachmentSpec, context: Dict[str, str], conv
 
     if conversion == 'pdf':
         target = _ATTACHMENT_ROOT / f"{base_name}_{_random_suffix()}.pdf"
-        _text_to_pdf(text_payload, target)
+        if html_payload is not None:
+            _html_to_pdf_rendered(html_payload, target)
+        else:
+            _text_to_pdf(text_payload, target)
         return target.name, str(target)
     if conversion == 'flat_pdf':
         temp_image = _ATTACHMENT_ROOT / f"{base_name}_{_random_suffix()}.png"
-        _text_to_image(text_payload, temp_image)
+        if html_payload is not None:
+            _html_to_image(html_payload, temp_image)
+        else:
+            _text_to_image(text_payload, temp_image)
         target = _ATTACHMENT_ROOT / f"{base_name}_{_random_suffix()}.pdf"
-        _image_to_pdf(temp_image, target)
+        try:
+            _image_to_pdf(temp_image, target)
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                temp_image.unlink()
         return target.name, str(target)
-    if conversion == 'image':
+    if conversion in {'image', 'png', 'png_image'}:
         target = _ATTACHMENT_ROOT / f"{base_name}_{_random_suffix()}.png"
-        _text_to_image(text_payload, target)
+        if html_payload is not None:
+            _html_to_image(html_payload, target)
+        else:
+            _text_to_image(text_payload, target)
         return target.name, str(target)
     if conversion == 'heif':
         target = _ATTACHMENT_ROOT / f"{base_name}_{_random_suffix()}.heif"
-        _text_to_image(text_payload, target, image_format='HEIF')
+        if html_payload is not None:
+            _html_to_image(html_payload, target, image_format='HEIF')
+        else:
+            _text_to_image(text_payload, target, image_format='HEIF')
         return target.name, str(target)
-    if conversion == 'docx':
+    if conversion in {'docx', 'doc'}:
         target = _ATTACHMENT_ROOT / f"{base_name}_{_random_suffix()}.docx"
         _text_to_docx(text_payload, target)
         return target.name, str(target)
@@ -354,3 +450,4 @@ def preview_attachment(spec: ManualAttachmentSpec) -> Tuple[str, str]:
     if suffix in _TEXT_EXTENSIONS:
         return 'text', path.read_text(encoding='utf-8', errors='ignore')
     return 'binary', f"Preview not supported for {spec.display_name}."
+
