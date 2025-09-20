@@ -36,6 +36,10 @@ def _map_content_template(choice: str) -> str:
         return "r1_tag"
     return choice
 
+def _map_subject_template(choice: str):
+    mapped = _map_content_template(choice)
+    return mapped, mapped
+
 def _gmass_preview_update(mode_value, token_files, auth_mode):
     if (mode_value or '').lower() != 'gmass':
         return gr.update(visible=False), "", ""
@@ -120,17 +124,31 @@ def gradio_ui():
                         label='GMass Deliverability URLs'
                     )
             with gr.Column():
-                content_template_choice = gr.Radio(
+                subject_template_choice = gr.Radio(
                     ["own_proven", "Own_last", "R1_Tag"],
                     value="own_proven",
-                    label="Content Template"
+                    label="Subject Template"
                 )
+                subject_template_value = gr.State("own_proven")
                 content_template_value = gr.State("own_proven")
 
-                content_template_choice.change(
+                subject_template_choice.change(
+                    _map_subject_template,
+                    inputs=subject_template_choice,
+                    outputs=[subject_template_value, content_template_value]
+                )
+
+                body_template_choice = gr.Radio(
+                    ["own_proven", "Own_last", "R1_Tag"],
+                    value="own_proven",
+                    label="Body Template"
+                )
+                body_template_value = gr.State("own_proven")
+
+                body_template_choice.change(
                     _map_content_template,
-                    inputs=content_template_choice,
-                    outputs=content_template_value
+                    inputs=body_template_choice,
+                    outputs=body_template_value
                 )
 
                 sender_name_type = gr.Radio(
@@ -222,6 +240,8 @@ def gradio_ui():
                 force_header,
                 sender_name_type,
                 content_template_value,
+                subject_template_value,
+                body_template_value,
                 auth_mode,
             ],
             outputs=[log_box, status_box, summary_box, gmass_status, gmass_urls_display]

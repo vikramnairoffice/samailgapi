@@ -9,7 +9,7 @@ This document enumerates all public and helper functions/classes by module.
 - **`generate_subject_with_prefix_pattern()`**: Creates a dynamic subject line with a random base, prefix, and pattern.
 - **`class ContentManager`**: 
     - Manages the generation of email subjects and bodies.
-    - `get_subject_and_body(template_mode)`: Returns a tuple of (subject, body) based on the selected template (`own_proven` or `gmass_inboxed`).
+    - get_subject_and_body(subject_template, body_template=None): Returns a tuple of (subject, body) using the selected subject/body templates.
 - **`content_manager`**: A global instance of `ContentManager`.
 
 ## `invoice.py`

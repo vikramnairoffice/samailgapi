@@ -153,7 +153,7 @@ def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth') -> Tuple[str, st
 def start_campaign(token_files, leads_file, send_delay_seconds, mode,
                    email_content_mode, attachment_folder, invoice_format,
                    support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None,
-                   auth_mode: str = 'oauth'):
+                   subject_template=None, body_template=None, auth_mode: str = 'oauth'):
     """Generator used by the Gradio UI button to stream campaign events."""
     log_lines: List[str] = []
     status = "Waiting"
@@ -171,6 +171,8 @@ def start_campaign(token_files, leads_file, send_delay_seconds, mode,
         send_delay_seconds=send_delay_seconds,
         mode=mode,
         content_template=content_template,
+        subject_template=subject_template,
+        body_template=body_template,
         email_content_mode=email_content_mode,
         attachment_format='pdf',
         invoice_format=invoice_format,

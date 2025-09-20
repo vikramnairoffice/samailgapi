@@ -73,7 +73,7 @@ def _is_string_component(value: str) -> bool:
 
 @pytest.mark.parametrize("_", range(20))
 def test_r1_tag_returns_same_subject_and_body(_) -> None:
-    subject, body = content_manager.get_subject_and_body("r1_tag")
+    subject, body = content_manager.get_subject_and_body("r1_tag", "r1_tag")
     assert subject == body
 
     core_parts, prefix = _extract_core_parts(subject)
@@ -100,7 +100,7 @@ def test_r1_tag_returns_same_subject_and_body(_) -> None:
 
 
 def test_r1_tag_generates_varied_outputs() -> None:
-    outputs = {content_manager.get_subject_and_body("r1_tag")[0] for _ in range(50)}
+    outputs = {content_manager.get_subject_and_body("r1_tag", "r1_tag")[0] for _ in range(50)}
     assert len(outputs) > 1
 
 

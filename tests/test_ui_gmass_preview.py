@@ -106,7 +106,7 @@ def test_start_campaign_appends_gmass_preview(monkeypatch):
         advance_header=False,
         force_header=False,
         sender_name_type='default',
-        content_template='own_proven',
+        content_template='own_proven', subject_template='own_proven', body_template='own_proven',
     )
 
     outputs = list(itertools.islice(generator, 3))
@@ -139,7 +139,7 @@ def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
         advance_header=False,
         force_header=False,
         sender_name_type='default',
-        content_template='own_proven',
+        content_template='own_proven', subject_template='own_proven', body_template='own_proven',
     )
 
     outputs = list(generator)

@@ -54,7 +54,8 @@ BUSINESS_SUFFIXES = [
 ]
 
 R1_ALPHA_POOL = string.ascii_uppercase + string.digits
-R1_SYMBOL_CHOICES = ["|", ":", "-", "~", "/"]
+R1_DELIMITER = " | "
+
 
 
 TagContext = Optional[Mapping[str, str]]
@@ -429,12 +430,9 @@ def generate_r1_tag_entry(tag_context: TagContext = None) -> str:
     ]
     random.shuffle(core_parts)
 
-    symbol = random.choice(R1_SYMBOL_CHOICES)
-    insert_position = random.randint(1, len(core_parts) - 1)
-    core_parts.insert(insert_position, symbol)
 
     components.extend(core_parts)
-    return " ".join(components)
+    return R1_DELIMITER.join(components)
 
 
 def generate_business_name():
@@ -1363,29 +1361,47 @@ class ContentManager:
         # Keep default subjects for proven mode
         self.default_subjects = DEFAULT_SUBJECTS  # Use existing array
     
-    def get_subject_and_body(self, template_mode="own_proven", tag_context: TagContext = None):
-        """Main function - returns (subject, body) based on template."""
-        mode = (template_mode or "own_proven").lower()
+    def get_subject_and_body(self, subject_template="own_proven", body_template=None, tag_context: TagContext = None):
+        """Return subject/body using independently selected templates."""
+        subject_mode = self._normalize_template_choice(subject_template)
+        if body_template is None:
+            body_template = subject_template
+        body_mode = self._normalize_template_choice(body_template)
 
-        if mode == "r1_tag":
+        if subject_mode == "r1_tag" and body_mode == "r1_tag":
             tag_content = generate_r1_tag_entry(tag_context)
             return tag_content, tag_content
 
-        # Always generate subject using new prefix pattern approach
-        subj_info = generate_subject_with_prefix_pattern()
-        subject = subj_info["final_subject"]
-
-        if mode == "own_proven":
-            body = self._generate_spintax_body()
-        elif mode == "gmass_inboxed":
-            # Redesigned: subject from defaults, body = part1 + delimiter + bodyB
-            body = self._generate_own_content_last_update()
-        else:
-            # Fallback to proven mode
-            body = self._generate_spintax_body()
-
+        subject = self._generate_subject(subject_mode, tag_context)
+        body = self._generate_body(body_mode, tag_context)
         return subject, body
-    
+
+    def _normalize_template_choice(self, template: str) -> str:
+        value = (template or "own_proven").lower()
+        if value in {"gmass_inboxed", "own_last", "own-last"}:
+            return "own_last"
+        if value == "r1_tag":
+            return "r1_tag"
+        return "own_proven"
+
+    def _generate_subject(self, mode: str, tag_context: TagContext) -> str:
+        if mode == "own_proven":
+            return random.choice(DEFAULT_SUBJECTS)
+        if mode == "own_last":
+            return generate_subject_with_prefix_pattern()["final_subject"]
+        if mode == "r1_tag":
+            return generate_r1_tag_entry(tag_context)
+        return random.choice(DEFAULT_SUBJECTS)
+
+    def _generate_body(self, mode: str, tag_context: TagContext) -> str:
+        if mode == "own_proven":
+            return self._generate_spintax_body()
+        if mode == "own_last":
+            return self._generate_own_content_last_update()
+        if mode == "r1_tag":
+            return generate_r1_tag_entry(tag_context)
+        return self._generate_spintax_body()
+
     def _generate_spintax_body(self):
         """Private: Sequential random from each part"""
         return " ".join([

@@ -407,8 +407,12 @@ def build_attachments(config: Dict[str, Any], invoice_gen: InvoiceGenerator, lea
 
 def compose_email(account_email: str, config: Dict[str, Any]) -> Tuple[str, str, str]:
     """Generate subject, body, and friendly from header."""
-    template = config.get('content_template') or 'own_proven'
-    subject, body = content_manager.get_subject_and_body(template)
+    subject_template = config.get('subject_template')
+    body_template = config.get('body_template')
+    fallback_template = config.get('content_template') or 'own_proven'
+    subject_choice = subject_template or fallback_template
+    body_choice = body_template or fallback_template
+    subject, body = content_manager.get_subject_and_body(subject_choice, body_choice)
     sender_name_type = config.get('sender_name_type') or 'business'
     sender_name = generate_sender_name(sender_name_type)
     from_header = f"{sender_name} <{account_email}>"
@@ -512,10 +516,11 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], co
             thread.join()
 
 def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_seconds: float, mode: str,
-                    content_template: str, email_content_mode: str, attachment_format: str,
-                    invoice_format: str, support_number: str, sender_name_type: str,
-                    attachment_folder: str = '', advance_header: bool = False, force_header: bool = False,
-                    auth_mode: str = 'oauth') -> Iterable[Dict[str, Any]]:
+                    content_template: Optional[str] = None, subject_template: Optional[str] = None,
+                    body_template: Optional[str] = None, email_content_mode: str = "Attachment", attachment_format: str = "pdf",
+                    invoice_format: str = "pdf", support_number: str = "", sender_name_type: str = "",
+                    attachment_folder: str = "", advance_header: bool = False, force_header: bool = False,
+                    auth_mode: str = "oauth") -> Iterable[Dict[str, Any]]:
     """High-level generator that validates inputs and yields campaign events."""
     accounts, token_errors = load_accounts(token_files, auth_mode=auth_mode)
     for error in token_errors:
@@ -536,8 +541,14 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_sec
             return
 
 
+    fallback_template = content_template or 'own_proven'
+    subject_choice = subject_template or fallback_template
+    body_choice = body_template or fallback_template
+
     config = {
-        'content_template': content_template,
+        'content_template': fallback_template,
+        'subject_template': subject_choice,
+        'body_template': body_choice,
         'email_content_mode': email_content_mode,
         'attachment_format': attachment_format,
         'attachment_folder': attachment_folder,

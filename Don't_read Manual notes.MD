@@ -11,6 +11,8 @@ Leads Deletation after sending
 Caching Issue as it's causing
 Multi threading logic and implimentation 
 
+Front Eend WIth R1 Tags supported 
+STOP Sending button 
 
 Testing V1. 1. Completely working entire System
 
