@@ -21,13 +21,13 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
 from content import (
-    DEFAULT_GMASS_RECIPIENTS,
     SEND_DELAY_SECONDS,
     PDF_ATTACHMENT_DIR,
     IMAGE_ATTACHMENT_DIR,
     generate_sender_name,
     content_manager,
 )
+from content_data.content_loader import load_default_gmass_recipients
 from invoice import InvoiceGenerator
 
 GMAIL_PROFILE_URL = "https://gmail.googleapis.com/gmail/v1/users/me/profile"
@@ -467,7 +467,7 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], co
         delay_seconds = 0.0
 
     if (mode or '').lower() == 'gmass':
-        assignments = [list(DEFAULT_GMASS_RECIPIENTS) for _ in range(account_count)]
+        assignments = [list(load_default_gmass_recipients()) for _ in range(account_count)]
     else:
         assignments = distribute_leads(leads, account_count)
 
@@ -533,7 +533,7 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_sec
     mode = (mode or 'gmass').lower()
     leads: List[str]
     if mode == 'gmass':
-        leads = list(DEFAULT_GMASS_RECIPIENTS)
+        leads = list(load_default_gmass_recipients())
     else:
         leads = read_leads_file(leads_file)
         if not leads:

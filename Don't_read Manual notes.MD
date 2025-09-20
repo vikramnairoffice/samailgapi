@@ -4,7 +4,6 @@ Version 1:
 
     Invoice :
     Fix notes With Better Implimentation
-    Add Product 
     Add Remaining logo to imgur 
 
 Leads Deletation after sending
