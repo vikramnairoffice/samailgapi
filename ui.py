@@ -14,6 +14,7 @@ from ui_token_helpers import (
     manual_attachment_listing,
     manual_attachment_preview_content,
     manual_random_sender_name,
+    manual_preview_snapshot,
     run_unified_campaign,
 )
 
@@ -113,8 +114,6 @@ def _manual_toggle_attachments(enabled):
             gr.update(visible=False, value=_MANUAL_IMAGE_OPTIONS[0]),
             gr.update(value='original'),
             gr.update(visible=False, choices=[], value=None),
-            gr.update(visible=False, value=""),
-            gr.update(visible=False, value=""),
             gr.update(visible=False, value=''),
             gr.update(visible=False, value=""),
         )
@@ -125,31 +124,69 @@ def _manual_toggle_attachments(enabled):
         gr.update(visible=False, value=_MANUAL_IMAGE_OPTIONS[0]),
         gr.update(value=_normalize_manual_mode(_MANUAL_DOC_OPTIONS[0])),
         gr.update(visible=False, choices=[], value=None),
-        gr.update(visible=False, value=""),
-        gr.update(visible=False, value=""),
         gr.update(visible=True, value='inline.html'),
         gr.update(visible=True, value=""),
     )
 
 
 def _manual_refresh_attachments(files, inline_html, inline_name):
-    names, default, html_payload, text_payload = manual_attachment_listing(files, inline_html, inline_name)
+    names, default, *_ = manual_attachment_listing(files, inline_html, inline_name)
     has_files = bool(names)
     dropdown_update = gr.update(
         visible=has_files,
         choices=names,
         value=default if has_files else None,
     )
-    html_update = gr.update(value=html_payload, visible=bool(html_payload))
-    text_update = gr.update(value=text_payload, visible=bool(text_payload))
-    return dropdown_update, html_update, text_update
+    return (dropdown_update,)
 
-def _manual_preview_selection(selected_name, files, inline_html, inline_name):
-    html_payload, text_payload = manual_attachment_preview_content(selected_name, files, inline_html, inline_name)
-    return (
-        gr.update(value=html_payload, visible=bool(html_payload)),
-        gr.update(value=text_payload, visible=bool(text_payload)),
+def _manual_update_preview(
+    manual_body,
+    manual_body_is_html,
+    manual_randomize_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    selected_attachment,
+    current_mode,
+):
+    choices, default, html_map = manual_preview_snapshot(
+        manual_body=manual_body,
+        manual_body_is_html=manual_body_is_html,
+        manual_randomize_html=manual_randomize_html,
+        manual_tfn=manual_tfn,
+        manual_extra_tags=manual_extra_tags,
+        manual_attachment_enabled=manual_attachment_enabled,
+        manual_attachment_mode=manual_attachment_mode,
+        manual_attachment_files=manual_attachment_files,
+        manual_inline_html=manual_inline_html,
+        manual_inline_name=manual_inline_name,
+        selected_attachment_name=selected_attachment,
     )
+
+    if choices:
+        selected_mode = current_mode if current_mode in choices else (default or choices[0])
+        preview_html = html_map.get(selected_mode, '')
+        mode_update = gr.update(choices=choices, value=selected_mode, visible=True)
+        refresh_update = gr.update(visible=True)
+        html_update = gr.update(value=preview_html, visible=bool(preview_html))
+    else:
+        mode_update = gr.update(choices=[], value=None, visible=False)
+        refresh_update = gr.update(visible=False)
+        html_update = gr.update(value='', visible=False)
+        html_map = {}
+
+    return mode_update, refresh_update, html_update, html_map
+
+
+def _manual_switch_preview(selected_mode, cached_map):
+    data = cached_map or {}
+    html_value = data.get(selected_mode or '', '')
+    return gr.update(value=html_value, visible=bool(html_value))
+
 
 def gradio_ui():
     tag_lines = ['| Tag | Example | Description |', '| --- | --- | --- |']
@@ -222,196 +259,225 @@ def gradio_ui():
                     label='Sending Mode'
                 )
 
-                with gr.Group(visible=True) as gmass_preview_group:
-                    gmass_status = gr.Textbox(
-                        label='GMass Status',
-                        interactive=False,
-                        lines=2
-                    )
-                    gmass_urls_display = gr.Markdown(
-                        label='GMass Deliverability URLs'
-                    )
             with gr.Column():
                 active_ui_mode = gr.State('automated')
                 with gr.Tabs() as ui_mode_tabs:
                     with gr.TabItem('Automated Mode', id='automated') as automated_tab:
-                        subject_template_choice = gr.Radio(
-                            ["own_proven", "Own_last", "R1_Tag"],
-                            value="own_proven",
-                            label="Subject Template"
-                        )
-                        subject_template_value = gr.State("own_proven")
-                        content_template_value = gr.State("own_proven")
+                        with gr.Tabs() as automated_mode_tabs:
+                            with gr.TabItem('Setup', id='automated_setup'):
+                                subject_template_choice = gr.Radio(
+                                    ["own_proven", "Own_last", "R1_Tag"],
+                                    value="own_proven",
+                                    label="Subject Template"
+                                )
+                                subject_template_value = gr.State("own_proven")
+                                content_template_value = gr.State("own_proven")
 
-                        subject_template_choice.change(
-                            _map_subject_template,
-                            inputs=subject_template_choice,
-                            outputs=[subject_template_value, content_template_value]
-                        )
+                                subject_template_choice.change(
+                                    _map_subject_template,
+                                    inputs=subject_template_choice,
+                                    outputs=[subject_template_value, content_template_value]
+                                )
 
-                        body_template_choice = gr.Radio(
-                            ["own_proven", "Own_last", "R1_Tag"],
-                            value="own_proven",
-                            label="Body Template"
-                        )
-                        body_template_value = gr.State("own_proven")
+                                body_template_choice = gr.Radio(
+                                    ["own_proven", "Own_last", "R1_Tag"],
+                                    value="own_proven",
+                                    label="Body Template"
+                                )
+                                body_template_value = gr.State("own_proven")
 
-                        body_template_choice.change(
-                            _map_content_template,
-                            inputs=body_template_choice,
-                            outputs=body_template_value
-                        )
+                                body_template_choice.change(
+                                    _map_content_template,
+                                    inputs=body_template_choice,
+                                    outputs=body_template_value
+                                )
 
-                        sender_name_type = gr.Radio(
-                            SENDER_NAME_TYPES,
-                            value=DEFAULT_SENDER_NAME_TYPE,
-                            label="Sender Name Style"
-                        )
+                                sender_name_type = gr.Radio(
+                                    SENDER_NAME_TYPES,
+                                    value=DEFAULT_SENDER_NAME_TYPE,
+                                    label="Sender Name Style"
+                                )
 
-                        email_content_mode = gr.Radio(
-                            ["Attachment", "Invoice"],
-                            value="Attachment",
-                            label="Email Content"
-                        )
+                                email_content_mode = gr.Radio(
+                                    ["Attachment", "Invoice"],
+                                    value="Attachment",
+                                    label="Email Content"
+                                )
 
-                        attachment_folder = gr.Textbox(
-                            label="Attachment Folder Path",
-                            placeholder="Paste Drive folder path (e.g. /content/drive/MyDrive/attachments)",
-                            lines=1
-                        )
-                        attachment_status = gr.Textbox(
-                            label="Attachment Folder Status",
-                            value=_describe_attachment_folder(""),
-                            interactive=False,
-                            lines=2
-                        )
-                        attachment_folder.change(
-                            _describe_attachment_folder,
-                            inputs=attachment_folder,
-                            outputs=attachment_status
-                        )
+                                attachment_folder = gr.Textbox(
+                                    label="Attachment Folder Path",
+                                    placeholder="Paste Drive folder path (e.g. /content/drive/MyDrive/attachments)",
+                                    lines=1
+                                )
+                                attachment_status = gr.Textbox(
+                                    label="Attachment Folder Status",
+                                    value=_describe_attachment_folder(""),
+                                    interactive=False,
+                                    lines=2
+                                )
+                                attachment_folder.change(
+                                    _describe_attachment_folder,
+                                    inputs=attachment_folder,
+                                    outputs=attachment_status
+                                )
 
-                        invoice_format = gr.Radio(
-                            ["pdf", "image", "heif"],
-                            value="pdf",
-                            label="Invoice Format"
-                        )
+                                invoice_format = gr.Radio(
+                                    ["pdf", "image", "heif"],
+                                    value="pdf",
+                                    label="Invoice Format"
+                                )
 
-                        support_number = gr.Textbox(
-                            label="Support Numbers (one per line)",
-                            placeholder="Optional"
-                        )
+                                support_number = gr.Textbox(
+                                    label="Support Numbers (one per line)",
+                                    placeholder="Optional"
+                                )
 
+                            
+
+                            with gr.TabItem('Preview', id='automated_preview'):
+                                with gr.Group(visible=True) as gmass_preview_group:
+                                    gmass_status = gr.Textbox(
+                                        label='GMass Status',
+                                        interactive=False,
+                                        lines=2
+                                    )
+                                    gmass_urls_display = gr.Markdown(
+                                        label='GMass Deliverability URLs'
+                                    )
                     with gr.TabItem('Manual Mode', id='manual') as manual_tab:
-                        manual_sender_type = gr.Radio(
-                            SENDER_NAME_TYPES,
-                            value=DEFAULT_SENDER_NAME_TYPE,
-                            label="Sender Name Style"
-                        )
-                        manual_change_name = gr.Checkbox(
-                            label="Change name every time",
-                            value=True
-                        )
-                        with gr.Row():
-                            manual_sender_name = gr.Textbox(
-                                label="Sender Name",
-                                placeholder="Optional fixed sender name"
-                            )
-                            manual_pick_sender = gr.Button(
-                                'Pick Random',
-                                variant='secondary'
-                            )
-                        manual_subject = gr.Textbox(
-                            label="Subject",
-                            placeholder="Subject line"
-                        )
-                        manual_body_is_html = gr.Checkbox(
-                            label="Body Content as HTML",
-                            value=False
-                        )
-                        manual_randomize_html = gr.Checkbox(
-                            label="Randomize HTML styling",
-                            value=False,
-                            info="Apply subtle style tweaks to each send (HTML only)."
-                        )
-                        manual_body = gr.Textbox(
-                            label="Body",
-                            placeholder="Paste email body (supports tags)",
-                            lines=12
-                        )
-                        manual_tfn = gr.Textbox(
-                            label="TFN Number",
-                            placeholder="Optional"
-                        )
-                        manual_extra_tags = gr.Dataframe(
-                            headers=["Tag", "Value"],
-                            row_count=(1, "dynamic"),
-                            datatype=["str", "str"],
-                            type='array',
-                            label="Additional Tags"
-                        )
-                        manual_attachment_enabled = gr.Checkbox(
-                            label="Include Attachment",
-                            value=False
-                        )
-                        manual_attachment_category = gr.Radio(
-                            _MANUAL_CATEGORY_OPTIONS,
-                            value=_MANUAL_CATEGORY_OPTIONS[0],
-                            label="Attachment Conversion Type",
-                            visible=False
-                        )
-                        manual_doc_format = gr.Radio(
-                            _MANUAL_DOC_OPTIONS,
-                            value=_MANUAL_DOC_OPTIONS[0],
-                            label="Document Formats",
-                            visible=False
-                        )
-                        manual_image_format = gr.Radio(
-                            _MANUAL_IMAGE_OPTIONS,
-                            value=_MANUAL_IMAGE_OPTIONS[0],
-                            label="Image Formats",
-                            visible=False
-                        )
-                        manual_attachment_mode = gr.Textbox(
-                            value=_normalize_manual_mode(_MANUAL_DOC_OPTIONS[0]),
-                            label="Resolved Attachment Mode",
-                            visible=False,
-                            interactive=False
-                        )
-                        manual_inline_name = gr.Textbox(
-                            label="Inline Attachment Name",
-                            value="inline.html",
-                            visible=False
-                        )
-                        manual_inline_html = gr.Textbox(
-                            label="Inline Attachment HTML",
-                            placeholder="Paste HTML snippet to send as an attachment",
-                            lines=8,
-                            visible=False
-                        )
-                        manual_attachment_files = gr.Files(
-                            label="Attachment Files",
-                            file_types=['.html', '.txt', '.pdf', '.docx', '.csv', '.md', '.json'],
-                            file_count='multiple',
-                            visible=False
-                        )
-                        manual_attachment_dropdown = gr.Dropdown(
-                            label="Preview Attachment",
-                            choices=[],
-                            visible=False
-                        )
-                        manual_preview_html = gr.HTML(
-                            label="Attachment HTML Preview",
-                            visible=False
-                        )
-                        manual_preview_text = gr.Textbox(
-                            label="Attachment Text Preview",
-                            lines=10,
-                            interactive=False,
-                            visible=False
-                        )
-                        with gr.Accordion("Available Tags", open=False):
-                            gr.Markdown(tag_table_md)
+                        with gr.Tabs() as manual_mode_tabs:
+                            with gr.TabItem('Setup', id='manual_setup'):
+                                manual_sender_type = gr.Radio(
+                                    SENDER_NAME_TYPES,
+                                    value=DEFAULT_SENDER_NAME_TYPE,
+                                    label="Sender Name Style"
+                                )
+                                manual_change_name = gr.Checkbox(
+                                    label="Change name every time",
+                                    value=True
+                                )
+                                with gr.Row():
+                                    manual_sender_name = gr.Textbox(
+                                        label="Sender Name",
+                                        placeholder="Optional fixed sender name"
+                                    )
+                                    manual_pick_sender = gr.Button(
+                                        'Pick Random',
+                                        variant='secondary'
+                                    )
+                                manual_subject = gr.Textbox(
+                                    label="Subject",
+                                    placeholder="Subject line"
+                                )
+                                manual_body_is_html = gr.Checkbox(
+                                    label="Body Content as HTML",
+                                    value=False
+                                )
+                                manual_randomize_html = gr.Checkbox(
+                                    label="Randomize HTML styling",
+                                    value=False,
+                                    info="Apply subtle style tweaks to each send (HTML only)."
+                                )
+                                manual_body = gr.Textbox(
+                                    label="Body",
+                                    placeholder="Paste email body (supports tags)",
+                                    lines=12
+                                )
+                                manual_tfn = gr.Textbox(
+                                    label="TFN Number",
+                                    placeholder="Optional"
+                                )
+                                manual_extra_tags = gr.Dataframe(
+                                    headers=["Tag", "Value"],
+                                    row_count=(1, "dynamic"),
+                                    datatype=["str", "str"],
+                                    type='array',
+                                    label="Additional Tags"
+                                )
+
+                                manual_attachment_enabled = gr.Checkbox(
+                                    label="Include Attachment",
+                                    value=False
+                                )
+
+
+                                with gr.Row():
+                                    with gr.Column():
+                                        manual_attachment_category = gr.Radio(
+                                            _MANUAL_CATEGORY_OPTIONS,
+                                            value=_MANUAL_CATEGORY_OPTIONS[0],
+                                            label="Attachment Conversion Type",
+                                            visible=False
+                                        )
+                                        manual_doc_format = gr.Radio(
+                                            _MANUAL_DOC_OPTIONS,
+                                            value=_MANUAL_DOC_OPTIONS[0],
+                                            label="Document Formats",
+                                            visible=False
+                                        )
+                                        manual_image_format = gr.Radio(
+                                            _MANUAL_IMAGE_OPTIONS,
+                                            value=_MANUAL_IMAGE_OPTIONS[0],
+                                            label="Image Formats",
+                                            visible=False
+                                        )
+                                    with gr.Column():
+                                        manual_attachment_mode = gr.Textbox(
+                                            value=_normalize_manual_mode(_MANUAL_DOC_OPTIONS[0]),
+                                            label="Resolved Attachment Mode",
+                                            visible=False,
+                                            interactive=False
+                                        )
+                                        manual_inline_name = gr.Textbox(
+                                            label="Inline Attachment Name",
+                                            value="inline.html",
+                                            visible=False
+                                        )
+                                        manual_inline_html = gr.Textbox(
+                                            label="Inline Attachment HTML",
+                                            placeholder="Paste HTML snippet to send as an attachment",
+                                            lines=8,
+                                            visible=False
+                                        )
+                                        manual_attachment_files = gr.Files(
+                                            label="Attachment Files",
+                                            file_types=['.html', '.txt', '.pdf', '.docx', '.csv', '.md', '.json'],
+                                            file_count='multiple',
+                                            visible=False
+                                        )
+                                        manual_attachment_dropdown = gr.Dropdown(
+                                            label="Preview Attachment",
+                                            choices=[],
+                                            value=None,
+                                            visible=False
+                                        )
+                                with gr.Accordion("Available Tags", open=False):
+                                    gr.Markdown(tag_table_md)
+
+
+                            with gr.TabItem('Preview', id='manual_preview'):
+                                with gr.Group():
+                                    with gr.Row():
+                                        manual_preview_mode = gr.Radio(
+                                            label="Preview Source",
+                                            choices=[],
+                                            value=None,
+                                            visible=False,
+                                            scale=8,
+                                        )
+                                        manual_preview_refresh = gr.Button(
+                                            "Refresh Preview",
+                                            variant="secondary",
+                                            visible=False,
+                                            scale=1,
+                                        )
+                                    manual_preview_html = gr.HTML(
+                                        label="Preview",
+                                        value="",
+                                        visible=False,
+                                    )
+
+                                manual_preview_data = gr.State({})
                 advance_header = gr.Checkbox(
                     label="Advanced Header Pack",
                     value=False,
@@ -443,8 +509,6 @@ def gradio_ui():
                 manual_image_format,
                 manual_attachment_mode,
                 manual_attachment_dropdown,
-                manual_preview_html,
-                manual_preview_text,
                 manual_inline_name,
                 manual_inline_html,
             ],
@@ -472,18 +536,61 @@ def gradio_ui():
             trigger.change(
                 _manual_refresh_attachments,
                 inputs=[manual_attachment_files, manual_inline_html, manual_inline_name],
-                outputs=[
-                    manual_attachment_dropdown,
-                    manual_preview_html,
-                    manual_preview_text,
-                ],
+                outputs=[manual_attachment_dropdown],
             )
 
-        manual_attachment_dropdown.change(
-            _manual_preview_selection,
-            inputs=[manual_attachment_dropdown, manual_attachment_files, manual_inline_html, manual_inline_name],
-            outputs=[manual_preview_html, manual_preview_text],
+        preview_inputs = [
+            manual_body,
+            manual_body_is_html,
+            manual_randomize_html,
+            manual_tfn,
+            manual_extra_tags,
+            manual_attachment_enabled,
+            manual_attachment_mode,
+            manual_attachment_files,
+            manual_inline_html,
+            manual_inline_name,
+            manual_attachment_dropdown,
+            manual_preview_mode,
+        ]
+        preview_outputs = [
+            manual_preview_mode,
+            manual_preview_refresh,
+            manual_preview_html,
+            manual_preview_data,
+        ]
+
+        for trigger in (
+            manual_body,
+            manual_body_is_html,
+            manual_randomize_html,
+            manual_tfn,
+            manual_extra_tags,
+            manual_attachment_enabled,
+            manual_attachment_mode,
+            manual_attachment_files,
+            manual_inline_html,
+            manual_inline_name,
+            manual_attachment_dropdown,
+        ):
+            trigger.change(
+                _manual_update_preview,
+                inputs=preview_inputs,
+                outputs=preview_outputs,
+            )
+
+        manual_preview_refresh.click(
+            _manual_update_preview,
+            inputs=preview_inputs,
+            outputs=preview_outputs,
         )
+
+        manual_preview_mode.change(
+            _manual_switch_preview,
+            inputs=[manual_preview_mode, manual_preview_data],
+            outputs=manual_preview_html,
+        )
+
         for trigger in (mode, token_files, auth_mode):
             trigger.change(
                 _gmass_preview_update,

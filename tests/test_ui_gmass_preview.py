@@ -1,6 +1,7 @@
 import itertools
 
 import pytest
+import ui
 import ui_token_helpers as helpers
 
 
@@ -149,3 +150,41 @@ def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
     assert outputs[0][2] == ''
 
 
+
+
+
+def _is_descendant(component, ancestor):
+    parent = getattr(component, 'parent', None)
+    while parent is not None:
+        if parent is ancestor:
+            return True
+        parent = getattr(parent, 'parent', None)
+    return False
+
+
+def _collect_parent_labels(component):
+    labels = []
+    parent = getattr(component, 'parent', None)
+    while parent is not None:
+        labels.append(getattr(parent, 'label', None))
+        parent = getattr(parent, 'parent', None)
+    return labels
+
+
+def test_automated_mode_has_setup_and_preview_tabs():
+    demo = ui.gradio_ui()
+    blocks = list(demo.blocks.values())
+    automated_tab = next(comp for comp in blocks if type(comp).__name__ == 'Tab' and comp.label == 'Automated Mode')
+    nested_tabs = [
+        comp for comp in blocks
+        if type(comp).__name__ == 'Tabs' and _is_descendant(comp, automated_tab)
+    ]
+    assert any([child.label for child in tabs.children] == ['Setup', 'Preview'] for tabs in nested_tabs)
+
+
+def test_gmass_preview_widgets_within_preview_tab():
+    demo = ui.gradio_ui()
+    gmass_status = next(comp for comp in demo.blocks.values() if getattr(comp, 'label', None) == 'GMass Status')
+    labels = _collect_parent_labels(gmass_status)
+    assert 'Automated Mode' in labels
+    assert 'Preview' in labels

@@ -1,9 +1,10 @@
 """Simple helpers connecting the Gradio UI to the Gmail REST mailer."""
 
+import html as _html_module
 import traceback
 import requests
 from functools import wraps
-from typing import Iterable, List, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
 from mailer import campaign_events, update_file_stats, load_accounts, fetch_mailbox_totals_app_password
@@ -192,31 +193,21 @@ def start_manual_campaign(
     status = "Waiting"
     summary = ""
 
-    extra_tags = parse_extra_tags(manual_extra_tags)
-    inline_html = manual_inline_html if manual_attachment_enabled else ''
-    inline_name = manual_inline_name if manual_attachment_enabled else ''
-    attachment_specs = to_attachment_specs(
-        manual_attachment_files if manual_attachment_enabled else [],
-        inline_html,
-        inline_name,
-    )
-
-    normalized_mode = (manual_attachment_mode or 'original').strip().lower().replace(' ', '_')
-
-    manual_config = ManualConfig(
-        enabled=True,
-        subject=manual_subject or '',
-        body=manual_body or '',
-        body_is_html=bool(manual_body_is_html),
-        randomize_html=bool(manual_randomize_html),
-        tfn=manual_tfn or '',
-        extra_tags=extra_tags,
-        attachments=attachment_specs,
-        attachment_mode=normalized_mode,
-        attachments_enabled=bool(manual_attachment_enabled),
-        sender_name=manual_sender_name or '',
-        change_name_every_time=bool(manual_change_name),
-        sender_name_type=manual_sender_type or 'business',
+    manual_config = build_manual_config_from_inputs(
+        manual_subject=manual_subject,
+        manual_body=manual_body,
+        manual_body_is_html=manual_body_is_html,
+        manual_randomize_html=manual_randomize_html,
+        manual_tfn=manual_tfn,
+        manual_extra_tags=manual_extra_tags,
+        manual_attachment_enabled=manual_attachment_enabled,
+        manual_attachment_mode=manual_attachment_mode,
+        manual_attachment_files=manual_attachment_files,
+        manual_inline_html=manual_inline_html,
+        manual_inline_name=manual_inline_name,
+        manual_sender_name=manual_sender_name,
+        manual_change_name=manual_change_name,
+        manual_sender_type=manual_sender_type,
     )
 
     events = campaign_events(
@@ -261,6 +252,136 @@ def start_manual_campaign(
         yield _build_output(log_lines, status, summary)
 
     yield _build_output(log_lines, status, summary or "Completed")
+
+
+
+
+_PREVIEW_EMAIL = "preview@example.com"
+
+
+def build_manual_config_from_inputs(
+    manual_subject,
+    manual_body,
+    manual_body_is_html,
+    manual_randomize_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    manual_sender_name,
+    manual_change_name,
+    manual_sender_type,
+):
+    extra_tags = parse_extra_tags(manual_extra_tags)
+    inline_html = manual_inline_html if manual_attachment_enabled else ''
+    inline_name = manual_inline_name if manual_attachment_enabled else ''
+    specs = to_attachment_specs(
+        manual_attachment_files if manual_attachment_enabled else [],
+        inline_html,
+        inline_name,
+    )
+    normalized_mode = (manual_attachment_mode or 'original').strip().lower().replace(' ', '_')
+    return ManualConfig(
+        enabled=True,
+        subject=manual_subject or '',
+        body=manual_body or '',
+        body_is_html=bool(manual_body_is_html),
+        randomize_html=bool(manual_randomize_html),
+        tfn=manual_tfn or '',
+        extra_tags=extra_tags,
+        attachments=specs,
+        attachment_mode=normalized_mode,
+        attachments_enabled=bool(manual_attachment_enabled),
+        sender_name=manual_sender_name or '',
+        change_name_every_time=bool(manual_change_name),
+        sender_name_type=manual_sender_type or 'business',
+    )
+
+
+
+def _wrap_text_as_html(text: str) -> str:
+    return f"<pre style='white-space:pre-wrap; margin:0;'>{_html_module.escape(text or '')}</pre>"
+
+
+def _wrap_preview_container(title: str, inner_html: str) -> str:
+    header = f"<div style='font-weight:600; margin-bottom:8px;'>{_html_module.escape(title)}</div>" if title else ''
+    body = inner_html or ''
+    return (
+        '<div style="max-height:600px; overflow:auto; padding:12px; '
+        'border:1px solid rgba(255,255,255,0.15); border-radius:8px; ' 
+        'background:rgba(0,0,0,0.25);">'
+        f'{header}{body}</div>'
+    )
+
+
+def manual_preview_snapshot(
+    *,
+    manual_body,
+    manual_body_is_html,
+    manual_randomize_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    selected_attachment_name,
+):
+    config = build_manual_config_from_inputs(
+        manual_subject='',
+        manual_body=manual_body,
+        manual_body_is_html=manual_body_is_html,
+        manual_randomize_html=manual_randomize_html,
+        manual_tfn=manual_tfn,
+        manual_extra_tags=manual_extra_tags,
+        manual_attachment_enabled=manual_attachment_enabled,
+        manual_attachment_mode=manual_attachment_mode,
+        manual_attachment_files=manual_attachment_files,
+        manual_inline_html=manual_inline_html,
+        manual_inline_name=manual_inline_name,
+        manual_sender_name='',
+        manual_change_name=False,
+        manual_sender_type='business',
+    )
+
+    context = config.build_context(_PREVIEW_EMAIL)
+    html_map = {}
+    choices = []
+
+    body_rendered, body_kind = config.render_body(context)
+    if body_rendered:
+        if body_kind == 'html':
+            fragment = body_rendered
+        else:
+            fragment = _wrap_text_as_html(body_rendered)
+        html_map['Body'] = _wrap_preview_container('Body Preview', fragment)
+        choices.append('Body')
+
+    if config.attachments_enabled and config.attachments:
+        specs = config.attachments
+        target = None
+        if selected_attachment_name:
+            for spec in specs:
+                if spec.display_name == selected_attachment_name:
+                    target = spec
+                    break
+        if target is None:
+            target = specs[0]
+        kind, payload = preview_attachment(target)
+        if kind == 'html':
+            attachment_fragment = payload
+        else:
+            attachment_fragment = _wrap_text_as_html(payload)
+        title = f"Attachment Preview ({target.display_name})"
+        html_map['Attachment'] = _wrap_preview_container(title, attachment_fragment)
+        choices.append('Attachment')
+
+    default = choices[0] if choices else ''
+    return choices, default, html_map
 
 
 def manual_random_sender_name(sender_type: str = 'business') -> str:
@@ -448,4 +569,3 @@ def run_unified_campaign(
     )
     for output in generator:
         yield output
-
