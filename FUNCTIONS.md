@@ -23,7 +23,6 @@ This document enumerates all public and helper functions/classes by module.
 
 ## `mailer.py`
 - **`update_file_stats(token_files, leads_file)`**: Returns status strings for the uploaded token and lead files.
-- **`update_attachment_stats(include_pdfs, include_images)`**: Returns a summary of available static attachments.
 - **`load_gmail_token(token_path)`**: Loads, validates, and refreshes a Gmail token from a file.
 - **`send_gmail_message(creds, sender_email, to_email, subject, body, attachments)`**: Sends an email using the Gmail REST API.
 - **`load_token_files(token_files)`**: Processes uploaded token files, returning a list of valid accounts and any errors.

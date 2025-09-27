@@ -127,7 +127,7 @@ def mailbox_rows_to_markdown(rows: List[Tuple[str, int, int]]) -> str:
         inbox_value = inbox_total if isinstance(inbox_total, int) else int(inbox_total or 0)
         sent_value = sent_total if isinstance(sent_total, int) else int(sent_total or 0)
         lines.append(f"- {name} - Inbox: {inbox_value} | Sent: {sent_value}")
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth') -> Tuple[str, str]:
@@ -448,8 +448,4 @@ def run_unified_campaign(
     )
     for output in generator:
         yield output
-
-
-
-
 

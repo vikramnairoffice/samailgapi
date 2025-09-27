@@ -84,21 +84,6 @@ def update_file_stats(token_files, leads_file, auth_mode: str = 'oauth'):
                 leads_msg = f"No leads found in {os.path.basename(path)}"
     return token_msg, leads_msg
 
-def update_attachment_stats(include_pdfs: bool, include_images: bool) -> str:
-    """Return a short summary of available attachments on disk."""
-    pdf_count = len(glob.glob(os.path.join(PDF_ATTACHMENT_DIR, "*.pdf"))) if include_pdfs and os.path.exists(PDF_ATTACHMENT_DIR) else 0
-    img_count = 0
-    if include_images and os.path.exists(IMAGE_ATTACHMENT_DIR):
-        img_count = len(glob.glob(os.path.join(IMAGE_ATTACHMENT_DIR, "*.jpg")))
-        img_count += len(glob.glob(os.path.join(IMAGE_ATTACHMENT_DIR, "*.png")))
-    stats = []
-    if include_pdfs:
-        stats.append(f"PDFs: {pdf_count}")
-    if include_images:
-        stats.append(f"Images: {img_count}")
-    return " | ".join(stats) if stats else "No attachments selected"
-
-
 def load_gmail_token(token_path):
     """Load a Gmail token JSON file, refresh if needed, and return (email, credentials)."""
     token_path = str(token_path)
@@ -162,20 +147,21 @@ def _build_mime_message(from_header: str, to_email: str, subject: str, body: str
                         advance_header: bool = False, force_header: bool = False, body_subtype: str = 'plain'):
     message = MIMEMultipart()
     message['To'] = to_email
-    message['From'] = from_header or 'me'
+    from_value = from_header or 'me'
+    message['From'] = from_value
     message['Subject'] = subject
     subtype = 'html' if str(body_subtype).lower() == 'html' else 'plain'
     message.attach(MIMEText(body, subtype))
 
     if advance_header:
-        message.add_header('X-Sender', from_header)
+        message.add_header('X-Sender', from_value)
         message.add_header('Date', formatdate(datetime.datetime.utcnow().timestamp(), localtime=False))
-        message.add_header('X-Sender-Identity', from_header)
+        message.add_header('X-Sender-Identity', from_value)
         message.add_header('Message-ID', make_msgid())
 
     if force_header:
-        message.add_header('Received-SPF', f"Pass (gmail.com: domain of {from_header} designates 192.0.2.1 as permitted sender)")
-        message.add_header('Authentication-Results', f"mx.google.com; spf=pass smtp.mailfrom={from_header}; dkim=pass; dmarc=pass")
+        message.add_header('Received-SPF', f"Pass (gmail.com: domain of {from_value} designates 192.0.2.1 as permitted sender)")
+        message.add_header('Authentication-Results', f"mx.google.com; spf=pass smtp.mailfrom={from_value}; dkim=pass; dmarc=pass")
         message.add_header('ARC-Authentication-Results', 'i=1; mx.google.com; spf=pass; dkim=pass; dmarc=pass')
         message.add_header('X-Sender-Reputation-Score', '90')
 
@@ -183,34 +169,22 @@ def _build_mime_message(from_header: str, to_email: str, subject: str, body: str
 
     return message
 
-
 def send_gmail_message(creds, sender_email, to_email, subject, body, attachments=None,
                         advance_header=False, force_header=False, body_subtype: str = 'plain'):
     """Send an email via the Gmail REST API using existing credentials."""
     if not creds or not getattr(creds, 'token', None):
         raise RuntimeError("Valid Gmail credentials with an access token are required to send messages.")
 
-    message = MIMEMultipart()
-    message['To'] = to_email
-    message['From'] = sender_email or 'me'
-    message['Subject'] = subject
-    subtype = 'html' if str(body_subtype).lower() == 'html' else 'plain'
-    message.attach(MIMEText(body, subtype))
-
-    if advance_header:
-        message.add_header('X-Sender', sender_email)
-        message.add_header('Date', formatdate(datetime.datetime.utcnow().timestamp(), localtime=False))
-        message.add_header('X-Sender-Identity', sender_email)
-        message.add_header('Message-ID', make_msgid())
-
-    if force_header:
-        message.add_header('Received-SPF', f"Pass (gmail.com: domain of {sender_email} designates 192.0.2.1 as permitted sender)")
-        message.add_header('Authentication-Results', f"mx.google.com; spf=pass smtp.mailfrom={sender_email}; dkim=pass; dmarc=pass")
-        message.add_header('ARC-Authentication-Results', 'i=1; mx.google.com; spf=pass; dkim=pass; dmarc=pass')
-        message.add_header('X-Sender-Reputation-Score', '90')
-
-    _attach_files(message, attachments)
-
+    message = _build_mime_message(
+        sender_email,
+        to_email,
+        subject,
+        body,
+        attachments,
+        advance_header,
+        force_header,
+        body_subtype,
+    )
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
 
     response = requests.post(
@@ -632,10 +606,4 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_sec
         'kind': 'done',
         'message': f"Completed {total_attempts} send attempt(s) with {successes} success(es).",
     }
-
-
-
-
-
-
 

@@ -57,11 +57,7 @@ def _manual_category_change(category, doc_choice, image_choice):
     )
 
 
-def _manual_doc_choice(value):
-    return _normalize_manual_mode(value)
-
-
-def _manual_image_choice(value):
+def _manual_format_choice(value):
     return _normalize_manual_mode(value)
 
 
@@ -461,67 +457,39 @@ def gradio_ui():
         )
 
         manual_doc_format.change(
-            _manual_doc_choice,
+            _manual_format_choice,
             inputs=manual_doc_format,
             outputs=manual_attachment_mode,
         )
 
         manual_image_format.change(
-            _manual_image_choice,
+            _manual_format_choice,
             inputs=manual_image_format,
             outputs=manual_attachment_mode,
         )
 
-        manual_attachment_files.change(
-            _manual_refresh_attachments,
-            inputs=[manual_attachment_files, manual_inline_html, manual_inline_name],
-            outputs=[
-                manual_attachment_dropdown,
-                manual_preview_html,
-                manual_preview_text,
-            ],
-        )
-
-        manual_inline_html.change(
-            _manual_refresh_attachments,
-            inputs=[manual_attachment_files, manual_inline_html, manual_inline_name],
-            outputs=[
-                manual_attachment_dropdown,
-                manual_preview_html,
-                manual_preview_text,
-            ],
-        )
-
-        manual_inline_name.change(
-            _manual_refresh_attachments,
-            inputs=[manual_attachment_files, manual_inline_html, manual_inline_name],
-            outputs=[
-                manual_attachment_dropdown,
-                manual_preview_html,
-                manual_preview_text,
-            ],
-        )
+        for trigger in (manual_attachment_files, manual_inline_html, manual_inline_name):
+            trigger.change(
+                _manual_refresh_attachments,
+                inputs=[manual_attachment_files, manual_inline_html, manual_inline_name],
+                outputs=[
+                    manual_attachment_dropdown,
+                    manual_preview_html,
+                    manual_preview_text,
+                ],
+            )
 
         manual_attachment_dropdown.change(
             _manual_preview_selection,
             inputs=[manual_attachment_dropdown, manual_attachment_files, manual_inline_html, manual_inline_name],
             outputs=[manual_preview_html, manual_preview_text],
         )
-        mode.change(
-            _gmass_preview_update,
-            inputs=[mode, token_files, auth_mode],
-            outputs=[gmass_preview_group, gmass_status, gmass_urls_display]
-        )
-        token_files.change(
-            _gmass_preview_update,
-            inputs=[mode, token_files, auth_mode],
-            outputs=[gmass_preview_group, gmass_status, gmass_urls_display]
-        )
-        auth_mode.change(
-            _gmass_preview_update,
-            inputs=[mode, token_files, auth_mode],
-            outputs=[gmass_preview_group, gmass_status, gmass_urls_display]
-        )
+        for trigger in (mode, token_files, auth_mode):
+            trigger.change(
+                _gmass_preview_update,
+                inputs=[mode, token_files, auth_mode],
+                outputs=[gmass_preview_group, gmass_status, gmass_urls_display],
+            )
 
         start_btn = gr.Button("Start Sending", variant="primary")
 
