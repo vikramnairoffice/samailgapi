@@ -333,6 +333,11 @@ def gradio_ui():
                             label="Body Content as HTML",
                             value=False
                         )
+                        manual_randomize_html = gr.Checkbox(
+                            label="Randomize HTML styling",
+                            value=False,
+                            info="Apply subtle style tweaks to each send (HTML only)."
+                        )
                         manual_body = gr.Textbox(
                             label="Body",
                             placeholder="Paste email body (supports tags)",
@@ -542,6 +547,7 @@ def gradio_ui():
                 manual_subject,
                 manual_body,
                 manual_body_is_html,
+                manual_randomize_html,
                 manual_tfn,
                 manual_extra_tags,
                 manual_attachment_enabled,

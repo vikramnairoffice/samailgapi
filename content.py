@@ -189,134 +189,134 @@ def _tag_tfn(context: TagContext = None) -> str:
 
 
 TAG_DEFINITIONS: Dict[str, TagDefinition] = {
-    "#DATE#": TagDefinition(
-        name="#DATE#",
+    "{{DATE}}": TagDefinition(
+        name="{{DATE}}",
         description="Generates the current date in multiple formats.",
         example="18 June, 2024",
         generator=_tag_date_multi,
     ),
-    "#DATE1#": TagDefinition(
-        name="#DATE1#",
+    "{{DATE1}}": TagDefinition(
+        name="{{DATE1}}",
         description="Generates the current date in various numeric formats.",
         example="07/05/2025",
         generator=_tag_date_numeric,
     ),
-    "#DATETIME#": TagDefinition(
-        name="#DATETIME#",
+    "{{DATETIME}}": TagDefinition(
+        name="{{DATETIME}}",
         description="Generates the current date and time in different formats.",
         example="20 May, 2025 00:00:00",
         generator=_tag_datetime,
     ),
-    "#NAME#": TagDefinition(
-        name="#NAME#",
+    "{{NAME}}": TagDefinition(
+        name="{{NAME}}",
         description="Generates a random single name.",
         example="Crystle",
         generator=_tag_single_name,
     ),
-    "#FNAME#": TagDefinition(
-        name="#FNAME#",
+    "{{FNAME}}": TagDefinition(
+        name="{{FNAME}}",
         description="Generates a random full name.",
         example="Robert Schmidt",
         generator=_tag_full_name,
     ),
-    "#UNAME#": TagDefinition(
-        name="#UNAME#",
+    "{{UNAME}}": TagDefinition(
+        name="{{UNAME}}",
         description="Generates a random unique name.",
         example="R. Nathan Hahn",
         generator=_tag_unique_name,
     ),
-    "#EMAIL#": TagDefinition(
-        name="#EMAIL#",
+    "{{EMAIL}}": TagDefinition(
+        name="{{EMAIL}}",
         description="Retrieves the client's email address.",
         example="alex2024@gmail.com",
         generator=_tag_email,
     ),
-    "#CONTENT#": TagDefinition(
-        name="#CONTENT#",
+    "{{CONTENT}}": TagDefinition(
+        name="{{CONTENT}}",
         description="Gets the main body content entered in the body box using this tag.",
         example="Content",
         generator=_tag_content,
     ),
-    "#INV#": TagDefinition(
-        name="#INV#",
+    "{{INV}}": TagDefinition(
+        name="{{INV}}",
         description="Generates a unique sequence number.",
         example="INV-FIGGRWNNFIT-04446407-SJXNE",
         generator=_tag_invoice,
     ),
-    "#INUM#": TagDefinition(
-        name="#INUM#",
+    "{{INUM}}": TagDefinition(
+        name="{{INUM}}",
         description="Generates a short numeric value (5 to 10 digits).",
         example="494500",
         generator=_tag_short_numeric,
     ),
-    "#LNUM#": TagDefinition(
-        name="#LNUM#",
+    "{{LNUM}}": TagDefinition(
+        name="{{LNUM}}",
         description="Generates a long numeric value (10 to 15 digits).",
         example="0770431750123",
         generator=_tag_long_numeric,
     ),
-    "#SMLETT#": TagDefinition(
-        name="#SMLETT#",
+    "{{SMLETT}}": TagDefinition(
+        name="{{SMLETT}}",
         description="Generates a short mixed-case letter string (10 to 15 characters).",
         example="FzsAcgjWqN",
         generator=_tag_short_mixed_letters,
     ),
-    "#LMLETT#": TagDefinition(
-        name="#LMLETT#",
+    "{{LMLETT}}": TagDefinition(
+        name="{{LMLETT}}",
         description="Generates a long mixed-case letter string (20 to 30 characters).",
         example="JVyDJmYahbZGHJQUtdBF",
         generator=_tag_long_mixed_letters,
     ),
-    "#SCLETT#": TagDefinition(
-        name="#SCLETT#",
+    "{{SCLETT}}": TagDefinition(
+        name="{{SCLETT}}",
         description="Generates a short uppercase letter string (10 to 15 characters).",
         example="EVOUAHLEM",
         generator=_tag_short_upper_letters,
     ),
-    "#LCLETT#": TagDefinition(
-        name="#LCLETT#",
+    "{{LCLETT}}": TagDefinition(
+        name="{{LCLETT}}",
         description="Generates a long uppercase letter string (20 to 30 characters).",
         example="PEQLXACTDWRDPHZTT",
         generator=_tag_long_upper_letters,
     ),
-    "#SLLETT#": TagDefinition(
-        name="#SLLETT#",
+    "{{SLLETT}}": TagDefinition(
+        name="{{SLLETT}}",
         description="Generates a short lowercase letter string (10 to 15 characters).",
         example="mxsebrvl",
         generator=_tag_short_lower_letters,
     ),
-    "#LLLETT#": TagDefinition(
-        name="#LLLETT#",
+    "{{LLLETT}}": TagDefinition(
+        name="{{LLLETT}}",
         description="Generates a long lowercase letter string (20 to 30 characters).",
         example="igxnibvmtqksywep",
         generator=_tag_long_lower_letters,
     ),
-    "#UKEY#": TagDefinition(
-        name="#UKEY#",
+    "{{UKEY}}": TagDefinition(
+        name="{{UKEY}}",
         description="Generates a unique UUID key.",
         example="1038df95-d2db-4fff-a668-c4cde9f7ec30",
         generator=_tag_uuid,
     ),
-    "#TRX#": TagDefinition(
-        name="#TRX#",
+    "{{TRX}}": TagDefinition(
+        name="{{TRX}}",
         description="Generates a random alphanumeric string (35 to 40 characters).",
         example="2CHCICPY1U0EVU6SMZZ1A3M0GGG05JPNETYYSI",
         generator=_tag_trx,
     ),
-    "#ADDRESS#": TagDefinition(
-        name="#ADDRESS#",
+    "{{ADDRESS}}": TagDefinition(
+        name="{{ADDRESS}}",
         description="Generates a random postal address.",
         example="108 Hemway Center",
         generator=_tag_address,
     ),
-    "#ADDRESS1#": TagDefinition(
-        name="#ADDRESS1#",
+    "{{ADDRESS1}}": TagDefinition(
+        name="{{ADDRESS1}}",
         description="Generates a random full address.",
         example="3356 Leon Keys Suite 431 Shawton, VY 88912",
         generator=_tag_full_address,
     ),
-    "#TFN#": TagDefinition(
-        name="#TFN#",
+    "{{TFN}}": TagDefinition(
+        name="{{TFN}}",
         description="Retrieves the number entered in the TFN input box.",
         example="+1 (856) 347-2649",
         generator=_tag_tfn,
@@ -324,7 +324,31 @@ TAG_DEFINITIONS: Dict[str, TagDefinition] = {
 }
 
 
-TAG_PATTERN = re.compile(r"|".join(re.escape(name) for name in sorted(TAG_DEFINITIONS.keys(), key=len, reverse=True)))
+LEGACY_TAG_ALIASES: Dict[str, str] = {
+    f"#{name[2:-2]}#": name
+    for name in TAG_DEFINITIONS.keys()
+}
+
+TAG_PATTERN = re.compile(
+    "|".join(
+        re.escape(name)
+        for name in sorted(
+            [*TAG_DEFINITIONS.keys(), *LEGACY_TAG_ALIASES.keys()],
+            key=len,
+            reverse=True,
+        )
+    )
+)
+
+
+def _resolve_tag_definition(tag_name: str) -> Optional[TagDefinition]:
+    definition = TAG_DEFINITIONS.get(tag_name)
+    if definition is not None:
+        return definition
+    canonical_name = LEGACY_TAG_ALIASES.get(tag_name)
+    if canonical_name is not None:
+        return TAG_DEFINITIONS.get(canonical_name)
+    return None
 
 
 def render_tagged_content(text: str, context: TagContext = None) -> str:
@@ -334,10 +358,11 @@ def render_tagged_content(text: str, context: TagContext = None) -> str:
 
     def _replacement(match: re.Match[str]) -> str:
         tag = match.group(0)
-        try:
-            return generate_tag_value(tag, context)
-        except KeyError:
+        definition = _resolve_tag_definition(tag)
+        if definition is None:
             return tag
+        try:
+            return definition.generator(context)
         except Exception:
             return tag
 
@@ -353,7 +378,7 @@ def get_tag_definitions() -> List[TagDefinition]:
 
 def generate_tag_value(tag_name: str, context: TagContext = None) -> str:
     """Return a realized tag value for the provided tag name."""
-    definition = TAG_DEFINITIONS.get(tag_name)
+    definition = _resolve_tag_definition(tag_name)
     if definition is None:
         raise KeyError(f"Unknown tag: {tag_name}")
     return definition.generator(context)
@@ -407,20 +432,20 @@ R1_KEYWORD_CHOICES = [
     "Upload",
     "Important",
 ]
-R1_NAME_TAGS = ["#NAME#", "#FNAME#", "#UNAME#"]
-R1_DATE_TAGS = ["#DATE#", "#DATE1#", "#DATETIME#"]
+R1_NAME_TAGS = ["{{NAME}}", "{{FNAME}}", "{{UNAME}}"]
+R1_DATE_TAGS = ["{{DATE}}", "{{DATE1}}", "{{DATETIME}}"]
 R1_STRING_TAGS = [
-    "#INV#",
-    "#UKEY#",
-    "#TRX#",
-    "#SMLETT#",
-    "#LMLETT#",
-    "#SCLETT#",
-    "#LCLETT#",
-    "#SLLETT#",
-    "#LLLETT#",
-    "#INUM#",
-    "#LNUM#",
+    "{{INV}}",
+    "{{UKEY}}",
+    "{{TRX}}",
+    "{{SMLETT}}",
+    "{{LMLETT}}",
+    "{{SCLETT}}",
+    "{{LCLETT}}",
+    "{{SLLETT}}",
+    "{{LLLETT}}",
+    "{{INUM}}",
+    "{{LNUM}}",
 ]
 
 

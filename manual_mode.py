@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import random
 import contextlib
 import shutil
 import tempfile
@@ -14,17 +15,9 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont, ImageChops
-from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
-
-try:
-    import fitz  # type: ignore
-    PYMUPDF_AVAILABLE = True
-except ImportError:  # pragma: no cover - optional dependency
-    PYMUPDF_AVAILABLE = False
-    fitz = None  # type: ignore
 
 try:
     from docx import Document  # type: ignore
@@ -35,14 +28,14 @@ except ImportError:  # pragma: no cover - optional dependency
 
 from content import render_tagged_content, generate_sender_name
 
+from html_randomizer import randomize_html
+from html_renderer import html_renderer, PlaywrightUnavailable
+
 
 _TEXT_EXTENSIONS = {'.txt', '.csv', '.md', '.json', '.html', '.htm'}
 _HTML_EXTENSIONS = {'.html', '.htm'}
 _ATTACHMENT_ROOT = Path(tempfile.gettempdir()) / "simple_mailer_manual"
 _ATTACHMENT_ROOT.mkdir(parents=True, exist_ok=True)
-
-_PAGE_MARGIN = 36
-
 
 class _HTMLTextExtractor(HTMLParser):
     """Basic HTML to text converter preserving simple block breaks."""
@@ -77,6 +70,22 @@ def _html_to_text(html: str) -> str:
 
 def _random_suffix() -> str:
     return uuid.uuid4().hex[:8]
+
+
+def _finalize_html_payload(raw_html: str, *, enable_random: bool, seed: Optional[int]) -> str:
+    if not raw_html:
+        return raw_html
+    needs_snapshot = '<script' in raw_html.lower() if isinstance(raw_html, str) else False
+    rendered = raw_html
+    if needs_snapshot or enable_random:
+        try:
+            rendered = html_renderer.render_html_snapshot(rendered, seed=seed)
+        except PlaywrightUnavailable as exc:
+            if needs_snapshot:
+                raise RuntimeError(str(exc)) from exc
+    if enable_random:
+        rendered = randomize_html(rendered, enabled=True, seed=seed)
+    return rendered
 
 
 def _wrap_lines(text: str, width: int = 90) -> List[str]:
@@ -158,11 +167,6 @@ def _image_to_pdf(image_path: Path, destination: Path) -> None:
     pdf.save()
 
 
-def _require_pymupdf() -> None:
-    if not PYMUPDF_AVAILABLE:
-        raise RuntimeError("Install 'pymupdf' to render HTML attachments correctly.")
-
-
 
 def _trim_rendered_image(image: Image.Image, padding: int = 12) -> Image.Image:
     """Crop extra page whitespace after rendering HTML."""
@@ -182,40 +186,22 @@ def _trim_rendered_image(image: Image.Image, padding: int = 12) -> Image.Image:
 
 
 
-def _render_html_document(html: str) -> "fitz.Document":
-    _require_pymupdf()
-    width, height = letter
-    doc = fitz.open()
-    page = doc.new_page(width=width, height=height)
-    rect = fitz.Rect(_PAGE_MARGIN, _PAGE_MARGIN, width - _PAGE_MARGIN, height - _PAGE_MARGIN)
-    page.insert_htmlbox(rect, html)
-    return doc
-
-
 def _html_to_pdf_rendered(html: str, destination: Path) -> None:
-    _require_pymupdf()
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    doc = _render_html_document(html)
     try:
-        doc.save(destination)
-    finally:
-        doc.close()
+        html_renderer.render_pdf(html, destination)
+    except PlaywrightUnavailable as exc:
+        raise RuntimeError(str(exc)) from exc
+
 
 
 def _html_to_image(html: str, destination: Path, image_format: str = 'PNG', zoom: float = 2.0) -> None:
-    _require_pymupdf()
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    doc = _render_html_document(html)
     try:
-        page = doc.load_page(0)
-        matrix = fitz.Matrix(zoom, zoom)
-        pix = page.get_pixmap(matrix=matrix, alpha=False)
-        buffer = BytesIO(pix.tobytes("png"))
-        with Image.open(buffer) as rendered:
-            trimmed = _trim_rendered_image(rendered)
-            _save_image(trimmed, destination, image_format)
-    finally:
-        doc.close()
+        rendered = html_renderer.render_image(html)
+    except PlaywrightUnavailable as exc:
+        raise RuntimeError(str(exc)) from exc
+    trimmed = _trim_rendered_image(rendered)
+    _save_image(trimmed, destination, image_format)
+
 
 
 def _text_to_docx(text: str, destination: Path) -> None:
@@ -263,6 +249,7 @@ class ManualConfig:
     body: str
     body_is_html: bool
     tfn: str
+    randomize_html: bool = False
     extra_tags: Dict[str, str] = field(default_factory=dict)
     attachments: List[ManualAttachmentSpec] = field(default_factory=list)
     attachment_mode: str = 'original'
@@ -283,6 +270,8 @@ class ManualConfig:
             if value is None:
                 continue
             context[key] = value
+        if self.randomize_html and '_style_seed' not in context:
+            context['_style_seed'] = random.randint(0, 2**31 - 1)
         return context
 
     def render_subject(self, context: Dict[str, str]) -> str:
@@ -294,6 +283,8 @@ class ManualConfig:
             cleaned = rendered.strip()
             if cleaned and not cleaned.lower().startswith('<'):
                 rendered = f'<p>{rendered}</p>'
+            seed = context.get('_style_seed')
+            rendered = _finalize_html_payload(rendered, enable_random=self.randomize_html, seed=seed)
             return rendered, 'html'
         return rendered, 'plain'
 
@@ -307,13 +298,21 @@ class ManualConfig:
             return {}
         conversion = (self.attachment_mode or 'original').lower()
         results: Dict[str, str] = {}
+        style_seed = context.get('_style_seed')
         for spec in self.attachments:
-            name, path = _render_attachment(spec, context, conversion)
+            name, path = _render_attachment(spec, context, conversion, self.randomize_html, style_seed)
             results[name] = path
         return results
 
 
-def _render_attachment(spec: ManualAttachmentSpec, context: Dict[str, str], conversion: str) -> Tuple[str, str]:
+
+def _render_attachment(
+    spec: ManualAttachmentSpec,
+    context: Dict[str, str],
+    conversion: str,
+    randomize: bool,
+    seed: Optional[int],
+) -> Tuple[str, str]:
     inline_payload = spec.inline_content
     suffix = spec.suffix()
     base_name = Path(spec.display_name).stem or 'attachment'
@@ -342,6 +341,10 @@ def _render_attachment(spec: ManualAttachmentSpec, context: Dict[str, str], conv
                 text_payload = rendered_text
         elif conversion != 'original':
             raise RuntimeError(f"Attachment {spec.display_name} is not a text/HTML file; conversion to {conversion} is unsupported.")
+
+    if html_payload is not None:
+        html_payload = _finalize_html_payload(html_payload, enable_random=randomize, seed=seed)
+        text_payload = _html_to_text(html_payload)
 
     conversion = (conversion or 'original').lower()
     if conversion == 'original':

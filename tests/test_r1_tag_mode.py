@@ -106,8 +106,8 @@ def test_r1_tag_generates_varied_outputs() -> None:
 
 def test_generate_tag_value_uses_context_overrides() -> None:
     context = {"content": "Hello body", "tfn": "123-456"}
-    assert generate_tag_value("#CONTENT#", context) == "Hello body"
-    assert generate_tag_value("#TFN#", context) == "123-456"
+    assert generate_tag_value("{{CONTENT}}", context) == "Hello body"
+    assert generate_tag_value("{{TFN}}", context) == "123-456"
 
 
 def test_generate_tag_value_all_tags_return_strings() -> None:
@@ -120,4 +120,4 @@ def test_generate_tag_value_all_tags_return_strings() -> None:
 
 def test_generate_tag_value_unknown_tag_raises() -> None:
     with pytest.raises(KeyError):
-        generate_tag_value("#UNKNOWN#")
+        generate_tag_value("{{UNKNOWN}}")
