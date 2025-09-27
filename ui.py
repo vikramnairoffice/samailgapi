@@ -62,6 +62,13 @@ def _manual_format_choice(value):
     return _normalize_manual_mode(value)
 
 
+def _manual_body_image_toggle(is_html):
+    enabled = bool(is_html)
+    if enabled:
+        return gr.update(interactive=True)
+    return gr.update(value=False, interactive=False)
+
+
 def _leads_status(leads_file):
     return update_file_stats([], leads_file)[1]
 
@@ -142,6 +149,7 @@ def _manual_refresh_attachments(files, inline_html, inline_name):
 def _manual_update_preview(
     manual_body,
     manual_body_is_html,
+    manual_body_image_enabled,
     manual_randomize_html,
     manual_tfn,
     manual_extra_tags,
@@ -156,6 +164,7 @@ def _manual_update_preview(
     choices, default, html_map = manual_preview_snapshot(
         manual_body=manual_body,
         manual_body_is_html=manual_body_is_html,
+        manual_body_image_enabled=manual_body_image_enabled,
         manual_randomize_html=manual_randomize_html,
         manual_tfn=manual_tfn,
         manual_extra_tags=manual_extra_tags,
@@ -378,6 +387,12 @@ def gradio_ui():
                                     value=False,
                                     info="Apply subtle style tweaks to each send (HTML only)."
                                 )
+                                manual_body_image_enabled = gr.Checkbox(
+                                    label="Convert HTML body to inline PNG",
+                                    value=False,
+                                    info="Renders the body HTML into a PNG and embeds it as an inline image.",
+                                    interactive=False
+                                )
                                 manual_body = gr.Textbox(
                                     label="Body",
                                     placeholder="Paste email body (supports tags)",
@@ -499,6 +514,12 @@ def gradio_ui():
             outputs=manual_sender_name,
         )
 
+        manual_body_is_html.change(
+            _manual_body_image_toggle,
+            inputs=manual_body_is_html,
+            outputs=manual_body_image_enabled,
+        )
+
         manual_attachment_enabled.change(
             _manual_toggle_attachments,
             inputs=manual_attachment_enabled,
@@ -542,6 +563,7 @@ def gradio_ui():
         preview_inputs = [
             manual_body,
             manual_body_is_html,
+            manual_body_image_enabled,
             manual_randomize_html,
             manual_tfn,
             manual_extra_tags,
@@ -563,6 +585,7 @@ def gradio_ui():
         for trigger in (
             manual_body,
             manual_body_is_html,
+            manual_body_image_enabled,
             manual_randomize_html,
             manual_tfn,
             manual_extra_tags,
@@ -622,6 +645,7 @@ def gradio_ui():
                 manual_subject,
                 manual_body,
                 manual_body_is_html,
+                manual_body_image_enabled,
                 manual_randomize_html,
                 manual_tfn,
                 manual_extra_tags,

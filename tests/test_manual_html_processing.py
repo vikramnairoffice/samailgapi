@@ -1,5 +1,6 @@
 ﻿from pathlib import Path
 
+import base64
 import pytest
 
 import manual_mode
@@ -93,3 +94,51 @@ def test_html_to_pdf_rendered_uses_playwright(monkeypatch, tmp_path):
 
     manual_mode._html_to_pdf_rendered('<html></html>', tmp_path / 'out.pdf')
     assert called['html'] == '<html></html>'
+
+def test_render_body_inline_png(monkeypatch, tmp_path):
+    calls = {}
+
+    def fake_html_to_image(html, destination, image_format='PNG', zoom=2.0):
+        calls['html'] = html
+        calls['format'] = image_format
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(b"\x89PNGinline")
+
+    monkeypatch.setattr(manual_mode, '_html_to_image', fake_html_to_image)
+
+    config = ManualConfig(
+        enabled=True,
+        subject='',
+        body='<div>Inline</div>',
+        body_is_html=True,
+        body_image_enabled=True,
+        tfn='',
+        randomize_html=False,
+    )
+
+    context = config.build_context('lead@example.com')
+    body, subtype = config.render_body(context)
+
+    assert subtype == 'html'
+    assert body.startswith('<img src="data:image/png;base64,')
+    payload = body.split(',', 1)[1].split('"', 1)[0]
+    assert base64.b64decode(payload) == b"\x89PNGinline"
+    assert calls['format'] == 'PNG'
+    assert '<div>Inline</div>' in calls['html']
+
+def test_render_body_plain_text_ignores_image_flag():
+    config = ManualConfig(
+        enabled=True,
+        subject='',
+        body='Plain text body',
+        body_is_html=False,
+        body_image_enabled=True,
+        tfn='',
+        randomize_html=False,
+    )
+
+    context = config.build_context('lead@example.com')
+    body, subtype = config.render_body(context)
+
+    assert subtype == 'plain'
+    assert body == 'Plain text body'

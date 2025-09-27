@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import random
 import contextlib
@@ -249,6 +250,7 @@ class ManualConfig:
     body: str
     body_is_html: bool
     tfn: str
+    body_image_enabled: bool = False
     randomize_html: bool = False
     extra_tags: Dict[str, str] = field(default_factory=dict)
     attachments: List[ManualAttachmentSpec] = field(default_factory=list)
@@ -284,10 +286,20 @@ class ManualConfig:
             if cleaned and not cleaned.lower().startswith('<'):
                 rendered = f'<p>{rendered}</p>'
             seed = context.get('_style_seed')
-            rendered = _finalize_html_payload(rendered, enable_random=self.randomize_html, seed=seed)
-            return rendered, 'html'
+            finalized = _finalize_html_payload(rendered, enable_random=self.randomize_html, seed=seed)
+            if self.body_image_enabled and finalized.strip():
+                image_path = _ATTACHMENT_ROOT / f"body_{_random_suffix()}.png"
+                _html_to_image(finalized, image_path, image_format="PNG")
+                try:
+                    payload = image_path.read_bytes()
+                finally:
+                    with contextlib.suppress(FileNotFoundError):
+                        image_path.unlink()
+                encoded = base64.b64encode(payload).decode("ascii")
+                img_tag = f'<img src="data:image/png;base64,{encoded}" alt="Email body image" />'
+                return img_tag, 'html'
+            return finalized, 'html'
         return rendered, 'plain'
-
     def resolve_sender_name(self, fallback_type: str = 'business') -> str:
         if self.change_name_every_time or not (self.sender_name or '').strip():
             return generate_sender_name(self.sender_name_type or fallback_type)

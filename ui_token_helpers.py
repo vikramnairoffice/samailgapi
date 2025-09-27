@@ -173,6 +173,7 @@ def start_manual_campaign(
     manual_subject,
     manual_body,
     manual_body_is_html,
+    manual_body_image_enabled,
     manual_randomize_html,
     manual_tfn,
     manual_extra_tags,
@@ -197,6 +198,7 @@ def start_manual_campaign(
         manual_subject=manual_subject,
         manual_body=manual_body,
         manual_body_is_html=manual_body_is_html,
+        manual_body_image_enabled=manual_body_image_enabled,
         manual_randomize_html=manual_randomize_html,
         manual_tfn=manual_tfn,
         manual_extra_tags=manual_extra_tags,
@@ -263,6 +265,7 @@ def build_manual_config_from_inputs(
     manual_subject,
     manual_body,
     manual_body_is_html,
+    manual_body_image_enabled,
     manual_randomize_html,
     manual_tfn,
     manual_extra_tags,
@@ -289,6 +292,7 @@ def build_manual_config_from_inputs(
         subject=manual_subject or '',
         body=manual_body or '',
         body_is_html=bool(manual_body_is_html),
+        body_image_enabled=bool(manual_body_image_enabled),
         randomize_html=bool(manual_randomize_html),
         tfn=manual_tfn or '',
         extra_tags=extra_tags,
@@ -321,6 +325,7 @@ def manual_preview_snapshot(
     *,
     manual_body,
     manual_body_is_html,
+    manual_body_image_enabled,
     manual_randomize_html,
     manual_tfn,
     manual_extra_tags,
@@ -335,6 +340,7 @@ def manual_preview_snapshot(
         manual_subject='',
         manual_body=manual_body,
         manual_body_is_html=manual_body_is_html,
+        manual_body_image_enabled=manual_body_image_enabled,
         manual_randomize_html=manual_randomize_html,
         manual_tfn=manual_tfn,
         manual_extra_tags=manual_extra_tags,
@@ -502,6 +508,7 @@ def run_unified_campaign(
     manual_subject,
     manual_body,
     manual_body_is_html,
+    manual_body_image_enabled,
     manual_randomize_html,
     manual_tfn,
     manual_extra_tags,
@@ -531,6 +538,7 @@ def run_unified_campaign(
             manual_subject,
             manual_body,
             manual_body_is_html,
+            manual_body_image_enabled,
             manual_randomize_html,
             manual_tfn,
             manual_extra_tags,
@@ -569,3 +577,4 @@ def run_unified_campaign(
     )
     for output in generator:
         yield output
+

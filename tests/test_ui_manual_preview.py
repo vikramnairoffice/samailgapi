@@ -23,6 +23,7 @@ def test_manual_preview_snapshot_with_html_body(tmp_html_file):
     choices, default, html_map = helpers.manual_preview_snapshot(
         manual_body='<p>Hello {{email}}</p>',
         manual_body_is_html=True,
+        manual_body_image_enabled=False,
         manual_randomize_html=False,
         manual_tfn='',
         manual_extra_tags=[],
@@ -45,6 +46,7 @@ def test_manual_preview_snapshot_with_attachment_only(tmp_html_file):
     choices, default, html_map = helpers.manual_preview_snapshot(
         manual_body='Plain content',
         manual_body_is_html=False,
+        manual_body_image_enabled=False,
         manual_randomize_html=False,
         manual_tfn='',
         manual_extra_tags=[],
@@ -66,6 +68,7 @@ def test_manual_update_preview_body_only_selects_valid_choice():
     mode_update, refresh_update, html_update, html_map = ui._manual_update_preview(
         manual_body='<p>Hello</p>',
         manual_body_is_html=True,
+        manual_body_image_enabled=False,
         manual_randomize_html=False,
         manual_tfn='',
         manual_extra_tags=[],
@@ -89,6 +92,7 @@ def test_manual_update_preview_with_selected_attachment(tmp_html_file):
     mode_update, refresh_update, html_update, html_map = ui._manual_update_preview(
         manual_body='',
         manual_body_is_html=False,
+        manual_body_image_enabled=False,
         manual_randomize_html=False,
         manual_tfn='',
         manual_extra_tags=[],
