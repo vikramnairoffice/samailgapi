@@ -494,87 +494,143 @@ def start_campaign(token_files, leads_file, send_delay_seconds, mode,
     yield (_build_output(log_lines, status, summary or "Completed"), gmass_status, gmass_markdown)
 
 
-@ui_error_wrapper(extra_outputs=("", ""))
-def run_unified_campaign(
-    active_ui_mode,
-    token_files,
-    leads_file,
-    send_delay_seconds,
-    mode,
-    email_content_mode,
-    attachment_folder,
-    invoice_format,
-    support_number,
-    manual_subject,
-    manual_body,
-    manual_body_is_html,
-    manual_body_image_enabled,
-    manual_randomize_html,
-    manual_tfn,
-    manual_extra_tags,
-    manual_attachment_enabled,
-    manual_attachment_mode,
-    manual_attachment_files,
-    manual_inline_html,
-    manual_inline_name,
-    manual_sender_name,
-    manual_change_name,
-    manual_sender_type,
-    advance_header=False,
-    force_header=False,
-    auth_mode: str = 'oauth',
-    sender_name_type=None,
-    content_template=None,
-    subject_template=None,
-    body_template=None,
-):
-    selected_mode = (active_ui_mode or 'automated').strip().lower()
-    if selected_mode == 'manual':
-        generator = start_manual_campaign(
-            token_files,
-            leads_file,
-            send_delay_seconds,
-            mode,
-            manual_subject,
-            manual_body,
-            manual_body_is_html,
-            manual_body_image_enabled,
-            manual_randomize_html,
-            manual_tfn,
-            manual_extra_tags,
-            manual_attachment_enabled,
-            manual_attachment_mode,
-            manual_attachment_files,
-            manual_inline_html,
-            manual_inline_name,
-            manual_sender_name,
-            manual_change_name,
-            manual_sender_type,
-            advance_header,
-            force_header,
-            auth_mode,
-        )
-        for output in generator:
-            yield (output, "", "")
-        return
-
-    generator = start_campaign(
-        token_files,
-        leads_file,
-        send_delay_seconds,
-        mode,
-        email_content_mode,
-        attachment_folder,
-        invoice_format,
-        support_number,
-        advance_header,
-        force_header,
-        sender_name_type,
-        content_template,
-        subject_template,
-        body_template,
-        auth_mode,
-    )
-    for output in generator:
-        yield output
-
+@ui_error_wrapper(extra_outputs=("", ""))
+
+def run_unified_campaign(
+    active_ui_mode,
+    token_files,
+    leads_file,
+    send_delay_seconds,
+    mode,
+    email_content_mode,
+    attachment_folder,
+    invoice_format,
+    support_number,
+    manual_subject,
+    manual_body,
+    manual_body_is_html,
+    manual_body_image_enabled,
+    manual_randomize_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    manual_sender_name,
+    manual_change_name,
+    manual_sender_type,
+    advance_header=False,
+    force_header=False,
+    auth_mode: str = 'oauth',
+    sender_name_type=None,
+    content_template=None,
+    subject_template=None,
+    body_template=None,
+):
+    selected_mode = (active_ui_mode or 'automatic').strip().lower()
+    if selected_mode == 'automated':
+        selected_mode = 'automatic'
+
+    if selected_mode == 'multi':
+        yield ("Status: Use the Multi Send button to launch multi-account campaigns.", "", "")
+        return
+
+    if selected_mode == 'manual':
+        generator = start_manual_campaign(
+            token_files,
+            leads_file,
+            send_delay_seconds,
+            mode,
+            manual_subject,
+            manual_body,
+            manual_body_is_html,
+            manual_body_image_enabled,
+            manual_randomize_html,
+            manual_tfn,
+            manual_extra_tags,
+            manual_attachment_enabled,
+            manual_attachment_mode,
+            manual_attachment_files,
+            manual_inline_html,
+            manual_inline_name,
+            manual_sender_name,
+            manual_change_name,
+            manual_sender_type,
+            advance_header,
+            force_header,
+            auth_mode,
+        )
+        for output in generator:
+            yield (output, "", "")
+        return
+
+    generator = start_campaign(
+        token_files,
+        leads_file,
+        send_delay_seconds,
+        mode,
+        email_content_mode,
+        attachment_folder,
+        invoice_format,
+        support_number,
+        advance_header,
+        force_header,
+        sender_name_type,
+        content_template,
+        subject_template,
+        body_template,
+        auth_mode,
+    )
+    for output in generator:
+        yield output
+
+
+@ui_error_wrapper(extra_outputs=("", ""))
+def run_multi_manual_campaign(
+    per_account_state,
+    token_files,
+    leads_file,
+    send_delay_seconds,
+    mode,
+    auth_mode: str = 'oauth',
+    advance_header: bool = False,
+    force_header: bool = False,
+):
+    state = per_account_state or {}
+    if not state:
+        yield ("Status: No accounts configured for multi mode.", "", "")
+        return
+
+    for account, config in state.items():
+        account_label = str(account)
+        generator = start_manual_campaign(
+            token_files,
+            leads_file,
+            send_delay_seconds,
+            mode,
+            config.get('manual_subject', ''),
+            config.get('manual_body', ''),
+            bool(config.get('manual_body_is_html')),
+            bool(config.get('manual_body_image_enabled')),
+            bool(config.get('manual_randomize_html')),
+            config.get('manual_tfn', ''),
+            config.get('manual_extra_tags') or [],
+            bool(config.get('manual_attachment_enabled')),
+            config.get('manual_attachment_mode', 'original'),
+            config.get('manual_attachment_files') or [],
+            config.get('manual_inline_html', ''),
+            config.get('manual_inline_name', 'inline.html'),
+            config.get('manual_sender_name', ''),
+            bool(config.get('manual_change_name', True)),
+            config.get('manual_sender_type', 'business'),
+            advance_header,
+            force_header,
+            auth_mode,
+        )
+        for output in generator:
+            message = output or ''
+            prefix = f"[{account_label}] " if message else f"[{account_label}]"
+            yield (f"{prefix}{message}", "", "")
+

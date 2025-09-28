@@ -123,6 +123,7 @@ def _is_descendant(component, ancestor):
     return False
 
 
+
 def _collect_parent_labels(component):
     labels = []
     parent = getattr(component, 'parent', None)
@@ -132,10 +133,15 @@ def _collect_parent_labels(component):
     return labels
 
 
-def test_manual_mode_has_setup_and_preview_tabs():
+
+def test_manual_tab_has_setup_and_preview_tabs():
     demo = ui.gradio_ui()
     blocks = list(demo.blocks.values())
-    manual_tab = next(comp for comp in blocks if type(comp).__name__ == 'Tab' and comp.label == 'Manual Mode')
+    mode_tabs = next(
+        comp for comp in blocks
+        if type(comp).__name__ == 'Tabs' and getattr(comp, 'elem_id', None) == 'mode-tabs'
+    )
+    manual_tab = next(child for child in mode_tabs.children if child.label == 'Manual')
     nested_tabs = [
         comp for comp in blocks
         if type(comp).__name__ == 'Tabs' and _is_descendant(comp, manual_tab)
@@ -143,10 +149,15 @@ def test_manual_mode_has_setup_and_preview_tabs():
     assert any([child.label for child in tabs.children] == ['Setup', 'Preview'] for tabs in nested_tabs)
 
 
+
 def test_manual_preview_controls_within_preview_tab():
     demo = ui.gradio_ui()
     blocks = list(demo.blocks.values())
-    manual_tab = next(comp for comp in blocks if type(comp).__name__ == 'Tab' and comp.label == 'Manual Mode')
+    mode_tabs = next(
+        comp for comp in blocks
+        if type(comp).__name__ == 'Tabs' and getattr(comp, 'elem_id', None) == 'mode-tabs'
+    )
+    manual_tab = next(child for child in mode_tabs.children if child.label == 'Manual')
     preview_html = next(
         comp for comp in blocks
         if type(comp).__name__ == 'HTML'
@@ -154,14 +165,19 @@ def test_manual_preview_controls_within_preview_tab():
         and _is_descendant(comp, manual_tab)
     )
     labels = _collect_parent_labels(preview_html)
-    assert 'Manual Mode' in labels
+    assert 'Manual' in labels
     assert 'Preview' in labels
+
 
 
 def test_manual_preview_mode_radio_within_preview_tab():
     demo = ui.gradio_ui()
     blocks = list(demo.blocks.values())
-    manual_tab = next(comp for comp in blocks if type(comp).__name__ == 'Tab' and comp.label == 'Manual Mode')
+    mode_tabs = next(
+        comp for comp in blocks
+        if type(comp).__name__ == 'Tabs' and getattr(comp, 'elem_id', None) == 'mode-tabs'
+    )
+    manual_tab = next(child for child in mode_tabs.children if child.label == 'Manual')
     preview_radio = next(
         comp for comp in blocks
         if type(comp).__name__ == 'Radio'
@@ -169,5 +185,5 @@ def test_manual_preview_mode_radio_within_preview_tab():
         and _is_descendant(comp, manual_tab)
     )
     labels = _collect_parent_labels(preview_radio)
-    assert 'Manual Mode' in labels
+    assert 'Manual' in labels
     assert 'Preview' in labels
