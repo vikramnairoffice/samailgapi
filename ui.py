@@ -722,43 +722,43 @@ def gradio_ui():
                 )
                 multi_account_selector = gr.Dropdown(
                     label='Account',
-                        choices=[],
-                        value=None,
-                        visible=False
-                    )
-                    multi_tabs, multi_form = _build_manual_form('multi', tag_table_md, visible=False)
-                    multi_start_btn = gr.Button("Start Multi Send", variant="primary")
+                    choices=[],
+                    value=None,
+                    visible=False
+                )
+                multi_tabs, multi_form = _build_manual_form('multi', tag_table_md, visible=False)
+                multi_start_btn = gr.Button("Start Multi Send", variant="primary")
 
-            start_btn = gr.Button("Start Sending", variant="primary")
+        start_btn = gr.Button("Start Sending", variant="primary")
 
-            run_output = gr.Textbox(
-                label="Run Output",
-                value="Status: Idle",
-                interactive=False,
-                lines=15,
-            )
+        run_output = gr.Textbox(
+            label="Run Output",
+            value="Status: Idle",
+            interactive=False,
+            lines=15,
+        )
 
-            automatic_tab.select(lambda: 'automatic', outputs=active_ui_mode)
-            manual_tab.select(lambda: 'manual', outputs=active_ui_mode)
-            multi_tab.select(lambda: 'multi', outputs=active_ui_mode)
+        automatic_tab.select(lambda: 'automatic', outputs=active_ui_mode)
+        manual_tab.select(lambda: 'manual', outputs=active_ui_mode)
+        multi_tab.select(lambda: 'multi', outputs=active_ui_mode)
 
-            manual_form.pick_sender.click(
-                manual_random_sender_name,
-                inputs=manual_form.sender_type,
-                outputs=manual_form.sender_name,
-            )
+        manual_form.pick_sender.click(
+            manual_random_sender_name,
+            inputs=manual_form.sender_type,
+            outputs=manual_form.sender_name,
+        )
 
-            manual_form.body_is_html.change(
-                _manual_body_image_toggle,
-                inputs=manual_form.body_is_html,
-                outputs=manual_form.body_image_enabled,
-            )
+        manual_form.body_is_html.change(
+            _manual_body_image_toggle,
+            inputs=manual_form.body_is_html,
+            outputs=manual_form.body_image_enabled,
+        )
 
-            manual_form.attachment_enabled.change(
-                _manual_toggle_attachments,
-                inputs=manual_form.attachment_enabled,
-                outputs=[
-                    manual_form.attachment_files,
+        manual_form.attachment_enabled.change(
+            _manual_toggle_attachments,
+            inputs=manual_form.attachment_enabled,
+            outputs=[
+                manual_form.attachment_files,
                 manual_form.attachment_category,
                 manual_form.doc_format,
                 manual_form.image_format,
