@@ -20,6 +20,10 @@ REMOTE_LOGO_CACHE_DIR = Path(tempfile.gettempdir()) / "simple_mailer_remote_logo
 
 
 
+# Expose remote logo URLs for legacy callers and tests.
+REMOTE_LOGO_URLS = load_remote_logo_urls()
+
+
 try:
     from faker import Faker
     fake = Faker('en_US')

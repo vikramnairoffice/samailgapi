@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover - optional dependency
     DOCX_AVAILABLE = False
     Document = None  # type: ignore
 
-from content import render_tagged_content, generate_sender_name
+from content import expand_spintax, render_tagged_content, generate_sender_name
 
 from html_randomizer import randomize_html
 from html_renderer import html_renderer, PlaywrightUnavailable
@@ -287,6 +287,7 @@ class ManualConfig:
                 rendered = f'<p>{rendered}</p>'
             seed = context.get('_style_seed')
             finalized = _finalize_html_payload(rendered, enable_random=self.randomize_html, seed=seed)
+            finalized = expand_spintax(finalized)
             if self.body_image_enabled and finalized.strip():
                 image_path = _ATTACHMENT_ROOT / f"body_{_random_suffix()}.png"
                 _html_to_image(finalized, image_path, image_format="PNG")
@@ -299,7 +300,7 @@ class ManualConfig:
                 img_tag = f'<img src="data:image/png;base64,{encoded}" alt="Email body image" />'
                 return img_tag, 'html'
             return finalized, 'html'
-        return rendered, 'plain'
+        return expand_spintax(rendered), 'plain'
     def resolve_sender_name(self, fallback_type: str = 'business') -> str:
         if self.change_name_every_time or not (self.sender_name or '').strip():
             return generate_sender_name(self.sender_name_type or fallback_type)

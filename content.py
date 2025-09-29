@@ -341,6 +341,10 @@ TAG_PATTERN = re.compile(
 )
 
 
+_SPINTAX_PATTERN = re.compile(r"\{([^{}]+)\}")
+_SPINTAX_MAX_ITERATIONS = 1000
+
+
 def _resolve_tag_definition(tag_name: str) -> Optional[TagDefinition]:
     definition = TAG_DEFINITIONS.get(tag_name)
     if definition is not None:
@@ -368,6 +372,33 @@ def render_tagged_content(text: str, context: TagContext = None) -> str:
 
     return TAG_PATTERN.sub(_replacement, text)
 
+
+
+def expand_spintax(text: str, rng: Optional[random.Random] = None) -> str:
+    """Resolve {a|b|c} style spintax expressions within text."""
+    if not isinstance(text, str):
+        return text
+    if '{' not in text or '}' not in text:
+        return text
+
+    chooser = rng.choice if rng is not None else random.choice
+    result = text
+    for _ in range(_SPINTAX_MAX_ITERATIONS):
+        if '{' not in result or '}' not in result:
+            break
+
+        def _replace(match: re.Match[str]) -> str:
+            options = match.group(1).split('|')
+            if not options:
+                return match.group(0)
+            return chooser(options)
+
+        updated = _SPINTAX_PATTERN.sub(_replace, result)
+        if updated == result:
+            break
+        result = updated
+
+    return result
 
 
 
@@ -527,6 +558,7 @@ class ContentManager:
 
         subject = self._generate_subject(subject_mode, tag_context)
         body = self._generate_body(body_mode, tag_context)
+        body = expand_spintax(body)
         return subject, body
 
     def _normalize_template_choice(self, template: str) -> str:
