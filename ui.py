@@ -1,4 +1,5 @@
 import os
+import html
 from dataclasses import dataclass
 
 import gradio as gr
@@ -12,10 +13,7 @@ from ui_token_helpers import (
     build_gmass_preview,
     gmass_rows_to_markdown,
     fetch_mailbox_counts,
-    manual_attachment_listing,
-    manual_attachment_preview_content,
     manual_random_sender_name,
-    manual_preview_snapshot,
     run_unified_campaign,
     run_multi_manual_campaign,
 )
@@ -24,6 +22,11 @@ from ui_token_helpers import (
 _MANUAL_DOC_OPTIONS = ["PDF", "Flat PDF", "Docx"]
 _MANUAL_IMAGE_OPTIONS = ["PNG", "HEIF"]
 _MANUAL_CATEGORY_OPTIONS = ["Doc", "Image", "Keep Original"]
+
+def _extract_update_value(value):
+    if isinstance(value, dict) and value.get('__type__') == 'update':
+        return value.get('value')
+    return value
 
 
 def _normalize_manual_mode(label: str) -> str:
@@ -62,6 +65,14 @@ def _manual_category_change(category, doc_choice, image_choice):
 
 def _manual_format_choice(value):
     return _normalize_manual_mode(value)
+
+
+def _looks_like_html(text: str) -> bool:
+    if not text:
+        return False
+    snippet = text.strip()[:1024]
+    lowered = snippet.lower()
+    return lowered.startswith('<!doctype') or '<html' in lowered or '</' in snippet
 
 
 def _manual_body_image_toggle(is_html):
@@ -115,88 +126,76 @@ def _gmass_preview_update(mode_value, token_files, auth_mode):
 
 def _manual_toggle_attachments(enabled):
     visible = bool(enabled)
-    if not visible:
-        return (
-            gr.update(visible=False, value=None),
-            gr.update(visible=False, value=_MANUAL_CATEGORY_OPTIONS[0]),
-            gr.update(visible=False, value=_MANUAL_DOC_OPTIONS[0]),
-            gr.update(visible=False, value=_MANUAL_IMAGE_OPTIONS[0]),
-            gr.update(value='original'),
-            gr.update(visible=False, choices=[], value=None),
-            gr.update(visible=False, value=''),
-            gr.update(visible=False, value=""),
-        )
+    interactive = visible
     return (
-        gr.update(visible=True, value=None),
-        gr.update(visible=True, value=_MANUAL_CATEGORY_OPTIONS[0]),
-        gr.update(visible=True, value=_MANUAL_DOC_OPTIONS[0]),
-        gr.update(visible=False, value=_MANUAL_IMAGE_OPTIONS[0]),
-        gr.update(value=_normalize_manual_mode(_MANUAL_DOC_OPTIONS[0])),
-        gr.update(visible=False, choices=[], value=None),
-        gr.update(visible=True, value='inline.html'),
-        gr.update(visible=True, value=""),
+        gr.update(visible=visible, interactive=interactive),
+        gr.update(visible=visible, interactive=interactive),
+        gr.update(visible=visible, interactive=interactive),
+        gr.update(visible=visible, interactive=interactive),
+        gr.update(visible=visible, interactive=interactive),
+        gr.update(visible=visible, interactive=interactive),
+        gr.update(visible=visible, interactive=interactive),
     )
 
 
-def _manual_refresh_attachments(files, inline_html, inline_name):
-    names, default, *_ = manual_attachment_listing(files, inline_html, inline_name)
-    has_files = bool(names)
-    dropdown_update = gr.update(
-        visible=has_files,
-        choices=names,
-        value=default if has_files else None,
-    )
-    return (dropdown_update,)
 
-def _manual_update_preview(
+
+
+_PREVIEW_CHOICES = ['Body', 'Attachment']
+
+def _preview_selection_change(selected_source):
+    value = _extract_update_value(selected_source)
+    clean = value if value in _PREVIEW_CHOICES else None
+    button_enabled = bool(clean)
+    radio_update = gr.update(choices=_PREVIEW_CHOICES, value=clean)
+    button_update = gr.update(interactive=button_enabled)
+    return radio_update, button_update
+
+
+def _preview_message(text: str) -> str:
+    return f'<div class="preview-empty">{html.escape(text)}</div>'
+
+
+def _wrap_preview_block(title: str, inner_html: str) -> str:
+    heading = html.escape(title)
+    return f'<div class="preview-block"><h3>{heading}</h3><div class="preview-body">{inner_html}</div></div>'
+
+
+def _render_body_fragment(manual_body: str, manual_body_is_html) -> str | None:
+    if not manual_body or not manual_body.strip():
+        return None
+    if bool(manual_body_is_html) or _looks_like_html(manual_body):
+        return _wrap_preview_block('Body Preview', manual_body)
+    escaped = html.escape(manual_body)
+    return _wrap_preview_block('Body Preview', f'<pre>{escaped}</pre>')
+
+
+def _render_attachment_fragment(manual_inline_html: str) -> str | None:
+    if not manual_inline_html or not manual_inline_html.strip():
+        return None
+    return _wrap_preview_block('Attachment Preview', manual_inline_html)
+
+
+def _manual_render_preview(
+    preview_source,
     manual_body,
     manual_body_is_html,
-    manual_body_image_enabled,
-    manual_randomize_html,
-    manual_tfn,
-    manual_extra_tags,
-    manual_attachment_enabled,
-    manual_attachment_mode,
-    manual_attachment_files,
     manual_inline_html,
-    manual_inline_name,
-    selected_attachment,
-    current_mode,
 ):
-    choices, default, html_map = manual_preview_snapshot(
-        manual_body=manual_body,
-        manual_body_is_html=manual_body_is_html,
-        manual_body_image_enabled=manual_body_image_enabled,
-        manual_randomize_html=manual_randomize_html,
-        manual_tfn=manual_tfn,
-        manual_extra_tags=manual_extra_tags,
-        manual_attachment_enabled=manual_attachment_enabled,
-        manual_attachment_mode=manual_attachment_mode,
-        manual_attachment_files=manual_attachment_files,
-        manual_inline_html=manual_inline_html,
-        manual_inline_name=manual_inline_name,
-        selected_attachment_name=selected_attachment,
-    )
+    source = (_extract_update_value(preview_source) or '').strip()
+    if source == 'Body':
+        fragment = _render_body_fragment(manual_body, manual_body_is_html)
+        if fragment:
+            return gr.update(value=fragment, visible=True)
+        return gr.update(value=_preview_message('No Body HTML provided'), visible=True)
 
-    if choices:
-        selected_mode = current_mode if current_mode in choices else (default or choices[0])
-        preview_html = html_map.get(selected_mode, '')
-        mode_update = gr.update(choices=choices, value=selected_mode, visible=True)
-        refresh_update = gr.update(visible=True)
-        html_update = gr.update(value=preview_html, visible=bool(preview_html))
-    else:
-        mode_update = gr.update(choices=[], value=None, visible=False)
-        refresh_update = gr.update(visible=False)
-        html_update = gr.update(value='', visible=False)
-        html_map = {}
+    if source == 'Attachment':
+        fragment = _render_attachment_fragment(manual_inline_html)
+        if fragment:
+            return gr.update(value=fragment, visible=True)
+        return gr.update(value=_preview_message('No Attachment HTML provided'), visible=True)
 
-    return mode_update, refresh_update, html_update, html_map
-
-
-def _manual_switch_preview(selected_mode, cached_map):
-    data = cached_map or {}
-    html_value = data.get(selected_mode or '', '')
-    return gr.update(value=html_value, visible=bool(html_value))
+    return gr.update(value=_preview_message('Select Body or Attachment to preview.'), visible=True)
 
 
 @dataclass
@@ -220,11 +219,9 @@ class ManualFormControls:
     attachment_files: object
     inline_html: object
     inline_name: object
-    attachment_dropdown: object
     preview_mode: object
-    preview_refresh: object
+    preview_button: object
     preview_html: object
-    preview_data: object
 
 
 def _build_manual_form(prefix: str, tag_table_md: str, *, visible: bool = True):
@@ -331,12 +328,6 @@ def _build_manual_form(prefix: str, tag_table_md: str, *, visible: bool = True):
                         file_count='multiple',
                         visible=False
                     )
-                    attachment_dropdown = gr.Dropdown(
-                        label='Preview Attachment',
-                        choices=[],
-                        value=None,
-                        visible=False
-                    )
             with gr.Accordion('Available Tags', open=False):
                 gr.Markdown(tag_table_md)
 
@@ -345,15 +336,14 @@ def _build_manual_form(prefix: str, tag_table_md: str, *, visible: bool = True):
                 with gr.Row():
                     preview_mode = gr.Radio(
                         label='Preview Source',
-                        choices=[],
+                        choices=['Body', 'Attachment'],
                         value=None,
-                        visible=False,
                         scale=8
                     )
-                    preview_refresh = gr.Button(
-                        'Refresh Preview',
+                    preview_button = gr.Button(
+                        'Preview',
                         variant='secondary',
-                        visible=False,
+                        interactive=False,
                         scale=1
                     )
                 preview_html = gr.HTML(
@@ -362,7 +352,6 @@ def _build_manual_form(prefix: str, tag_table_md: str, *, visible: bool = True):
                     visible=False
                 )
 
-    preview_data = gr.State({})
     controls = ManualFormControls(
         sender_type=sender_type,
         change_name=change_name,
@@ -383,13 +372,12 @@ def _build_manual_form(prefix: str, tag_table_md: str, *, visible: bool = True):
         attachment_files=attachment_files,
         inline_html=inline_html,
         inline_name=inline_name,
-        attachment_dropdown=attachment_dropdown,
         preview_mode=preview_mode,
-        preview_refresh=preview_refresh,
-        preview_html=preview_html,
-        preview_data=preview_data
+        preview_button=preview_button,
+        preview_html=preview_html
     )
     return tabs, controls
+
 
 
 def _manual_multi_default_config():
@@ -412,7 +400,6 @@ def _manual_multi_default_config():
         'manual_category': 'Keep Original',
         'manual_doc_choice': _MANUAL_DOC_OPTIONS[0],
         'manual_image_choice': _MANUAL_IMAGE_OPTIONS[0],
-        'manual_selected_attachment': None,
     }
 
 
@@ -447,12 +434,13 @@ def _manual_multi_store_current(state, account, **kwargs):
     config = _manual_multi_get_config(state, account)
     updated = config.copy()
     for key, value in kwargs.items():
+        clean_value = _extract_update_value(value)
         if key == 'manual_attachment_files':
-            updated[key] = list(value or [])
+            updated[key] = list(clean_value or [])
         elif key == 'manual_extra_tags':
-            updated[key] = value or []
+            updated[key] = clean_value or []
         else:
-            updated[key] = value
+            updated[key] = clean_value
     state[account] = updated
     return state
 
@@ -483,40 +471,11 @@ def _manual_multi_on_account_change(state, account):
     attachment_files = list(config.get('manual_attachment_files') or [])
     inline_html = config.get('manual_inline_html', '')
     inline_name = config.get('manual_inline_name', 'inline.html')
-    names, default, _, _ = manual_attachment_listing(attachment_files, inline_html, inline_name)
-    selected_attachment = config.get('manual_selected_attachment') or (default if default in names else (names[0] if names else None))
-    preview_choice = config.get('manual_preview_choice')
 
-    preview_mode_update, preview_refresh_update, preview_html_update, preview_map = _manual_update_preview(
-        config.get('manual_body', ''),
-        bool(config.get('manual_body_is_html')),
-        bool(config.get('manual_body_image_enabled')),
-        bool(config.get('manual_randomize_html')),
-        config.get('manual_tfn', ''),
-        config.get('manual_extra_tags') or [],
-        attachment_enabled,
-        config.get('manual_attachment_mode', 'original'),
-        attachment_files,
-        inline_html,
-        inline_name,
-        selected_attachment,
-        preview_choice,
-    )
+    updated_state = _manual_multi_store_current(state, account)
 
-    dropdown_choice = preview_mode_update['value'] if isinstance(preview_mode_update, dict) else preview_choice
-    selected_attachment = dropdown_choice if dropdown_choice in names else selected_attachment
-    dropdown_update = gr.update(
-        visible=attachment_enabled and bool(names),
-        choices=names,
-        value=selected_attachment if (selected_attachment and selected_attachment in names) else (names[0] if names else None),
-    )
-
-    updated_state = _manual_multi_store_current(
-        state,
-        account,
-        manual_selected_attachment=dropdown_update['value'],
-        manual_preview_choice=preview_mode_update['value'],
-    )
+    doc_visible = attachment_enabled and category == 'Doc'
+    image_visible = attachment_enabled and category == 'Image'
 
     return (
         gr.update(value=config.get('manual_subject', '')),
@@ -528,17 +487,15 @@ def _manual_multi_on_account_change(state, account):
         gr.update(value=config.get('manual_extra_tags') or []),
         gr.update(value=attachment_enabled),
         gr.update(value=category, visible=attachment_enabled),
-        gr.update(value=doc_choice, visible=attachment_enabled and category == 'Doc'),
-        gr.update(value=image_choice, visible=attachment_enabled and category == 'Image'),
+        gr.update(value=doc_choice, visible=doc_visible),
+        gr.update(value=image_choice, visible=image_visible),
         gr.update(value=config.get('manual_attachment_mode', 'original')),
         gr.update(value=attachment_files if attachment_enabled else None, visible=attachment_enabled),
         gr.update(value=inline_html, visible=attachment_enabled),
         gr.update(value=inline_name, visible=attachment_enabled),
-        dropdown_update,
-        preview_mode_update,
-        preview_refresh_update,
-        preview_html_update,
-        preview_map,
+        gr.update(choices=_PREVIEW_CHOICES, value=None),
+        gr.update(interactive=False),
+        gr.update(value='', visible=False),
         gr.update(value=config.get('manual_sender_name', '')),
         gr.update(value=bool(config.get('manual_change_name', True))),
         gr.update(value=config.get('manual_sender_type', DEFAULT_SENDER_NAME_TYPE)),
@@ -567,8 +524,6 @@ def _manual_multi_capture_config(
     manual_category,
     manual_doc_choice,
     manual_image_choice,
-    manual_selected_attachment,
-    manual_preview_choice,
 ):
     return _manual_multi_store_current(
         state,
@@ -591,10 +546,7 @@ def _manual_multi_capture_config(
         manual_category=manual_category,
         manual_doc_choice=manual_doc_choice,
         manual_image_choice=manual_image_choice,
-        manual_selected_attachment=manual_selected_attachment,
-        manual_preview_choice=manual_preview_choice,
     )
-
 
 
 def gradio_ui():
@@ -811,7 +763,6 @@ def gradio_ui():
                 manual_form.doc_format,
                 manual_form.image_format,
                 manual_form.attachment_mode,
-                manual_form.attachment_dropdown,
                 manual_form.inline_name,
                 manual_form.inline_html,
             ],
@@ -835,64 +786,21 @@ def gradio_ui():
             outputs=manual_form.attachment_mode,
         )
 
-        for trigger in (manual_form.attachment_files, manual_form.inline_html, manual_form.inline_name):
-            trigger.change(
-                _manual_refresh_attachments,
-                inputs=[manual_form.attachment_files, manual_form.inline_html, manual_form.inline_name],
-                outputs=[manual_form.attachment_dropdown],
-            )
-
-        manual_preview_inputs = [
-            manual_form.body,
-            manual_form.body_is_html,
-            manual_form.body_image_enabled,
-            manual_form.randomize_html,
-            manual_form.tfn,
-            manual_form.extra_tags,
-            manual_form.attachment_enabled,
-            manual_form.attachment_mode,
-            manual_form.attachment_files,
-            manual_form.inline_html,
-            manual_form.inline_name,
-            manual_form.attachment_dropdown,
-            manual_form.preview_mode,
-        ]
-        manual_preview_outputs = [
-            manual_form.preview_mode,
-            manual_form.preview_refresh,
-            manual_form.preview_html,
-            manual_form.preview_data,
-        ]
-
-        for trigger in (
-            manual_form.body,
-            manual_form.body_is_html,
-            manual_form.body_image_enabled,
-            manual_form.randomize_html,
-            manual_form.tfn,
-            manual_form.extra_tags,
-            manual_form.attachment_enabled,
-            manual_form.attachment_mode,
-            manual_form.attachment_files,
-            manual_form.inline_html,
-            manual_form.inline_name,
-            manual_form.attachment_dropdown,
-        ):
-            trigger.change(
-                _manual_update_preview,
-                inputs=manual_preview_inputs,
-                outputs=manual_preview_outputs,
-            )
-
-        manual_form.preview_refresh.click(
-            _manual_update_preview,
-            inputs=manual_preview_inputs,
-            outputs=manual_preview_outputs,
-        )
 
         manual_form.preview_mode.change(
-            _manual_switch_preview,
-            inputs=[manual_form.preview_mode, manual_form.preview_data],
+            _preview_selection_change,
+            inputs=manual_form.preview_mode,
+            outputs=[manual_form.preview_mode, manual_form.preview_button],
+        )
+
+        manual_form.preview_button.click(
+            _manual_render_preview,
+            inputs=[
+                manual_form.preview_mode,
+                manual_form.body,
+                manual_form.body_is_html,
+                manual_form.inline_html,
+            ],
             outputs=manual_form.preview_html,
         )
 
@@ -933,7 +841,6 @@ def gradio_ui():
                 multi_form.doc_format,
                 multi_form.image_format,
                 multi_form.attachment_mode,
-                multi_form.attachment_dropdown,
                 multi_form.inline_name,
                 multi_form.inline_html,
             ],
@@ -957,64 +864,21 @@ def gradio_ui():
             outputs=multi_form.attachment_mode,
         )
 
-        for trigger in (multi_form.attachment_files, multi_form.inline_html, multi_form.inline_name):
-            trigger.change(
-                _manual_refresh_attachments,
-                inputs=[multi_form.attachment_files, multi_form.inline_html, multi_form.inline_name],
-                outputs=[multi_form.attachment_dropdown],
-            )
-
-        multi_preview_inputs = [
-            multi_form.body,
-            multi_form.body_is_html,
-            multi_form.body_image_enabled,
-            multi_form.randomize_html,
-            multi_form.tfn,
-            multi_form.extra_tags,
-            multi_form.attachment_enabled,
-            multi_form.attachment_mode,
-            multi_form.attachment_files,
-            multi_form.inline_html,
-            multi_form.inline_name,
-            multi_form.attachment_dropdown,
-            multi_form.preview_mode,
-        ]
-        multi_preview_outputs = [
-            multi_form.preview_mode,
-            multi_form.preview_refresh,
-            multi_form.preview_html,
-            multi_form.preview_data,
-        ]
-
-        for trigger in (
-            multi_form.body,
-            multi_form.body_is_html,
-            multi_form.body_image_enabled,
-            multi_form.randomize_html,
-            multi_form.tfn,
-            multi_form.extra_tags,
-            multi_form.attachment_enabled,
-            multi_form.attachment_mode,
-            multi_form.attachment_files,
-            multi_form.inline_html,
-            multi_form.inline_name,
-            multi_form.attachment_dropdown,
-        ):
-            trigger.change(
-                _manual_update_preview,
-                inputs=multi_preview_inputs,
-                outputs=multi_preview_outputs,
-            )
-
-        multi_form.preview_refresh.click(
-            _manual_update_preview,
-            inputs=multi_preview_inputs,
-            outputs=multi_preview_outputs,
-        )
 
         multi_form.preview_mode.change(
-            _manual_switch_preview,
-            inputs=[multi_form.preview_mode, multi_form.preview_data],
+            _preview_selection_change,
+            inputs=multi_form.preview_mode,
+            outputs=[multi_form.preview_mode, multi_form.preview_button],
+        )
+
+        multi_form.preview_button.click(
+            _manual_render_preview,
+            inputs=[
+                multi_form.preview_mode,
+                multi_form.body,
+                multi_form.body_is_html,
+                multi_form.inline_html,
+            ],
             outputs=multi_form.preview_html,
         )
 
@@ -1037,11 +901,9 @@ def gradio_ui():
                 multi_form.attachment_files,
                 multi_form.inline_html,
                 multi_form.inline_name,
-                multi_form.attachment_dropdown,
                 multi_form.preview_mode,
-                multi_form.preview_refresh,
+                multi_form.preview_button,
                 multi_form.preview_html,
-                multi_form.preview_data,
                 multi_form.sender_name,
                 multi_form.change_name,
                 multi_form.sender_type,
@@ -1076,8 +938,6 @@ def gradio_ui():
             multi_form.attachment_category,
             multi_form.doc_format,
             multi_form.image_format,
-            multi_form.attachment_dropdown,
-            multi_form.preview_mode,
         ]
 
         for trigger in (
@@ -1099,8 +959,6 @@ def gradio_ui():
             multi_form.attachment_category,
             multi_form.doc_format,
             multi_form.image_format,
-            multi_form.attachment_dropdown,
-            multi_form.preview_mode,
         ):
             trigger.change(
                 _manual_multi_capture_config,
@@ -1169,14 +1027,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
 

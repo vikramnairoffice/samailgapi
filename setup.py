@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from setuptools import setup
 
 ROOT = Path(__file__).parent
@@ -20,6 +20,7 @@ def parse_requirements():
         'Pillow>=8.0.0',
         'pillow-heif>=0.9.0',
         'python-docx>=0.8.11',
+        'playwright>=1.45.0',
     ]
 
 
@@ -87,3 +88,4 @@ setup(
         'Documentation': 'https://github.com/vikramnairoffice/simple-gmail-rest-mailer/blob/main/README.md',
     },
 )
+

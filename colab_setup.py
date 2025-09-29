@@ -1,4 +1,4 @@
-﻿import os
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -17,6 +17,8 @@ BASE_REQUIREMENTS = [
     "requests>=2.25.0",
     "Pillow>=8.0.0",
     "pillow-heif>=0.9.0",
+    "python-docx>=0.8.11",
+    "playwright>=1.45.0",
 ]
 
 COLAB_EXTRAS = [
