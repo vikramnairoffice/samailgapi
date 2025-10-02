@@ -75,11 +75,20 @@ def _looks_like_html(text: str) -> bool:
     return lowered.startswith('<!doctype') or '<html' in lowered or '</' in snippet
 
 
-def _manual_body_image_toggle(is_html):
-    enabled = bool(is_html)
-    if enabled:
-        return gr.update(interactive=True)
-    return gr.update(value=False, interactive=False)
+def _manual_body_image_toggle(is_html, stored_value):
+    stored = bool(stored_value)
+    if bool(is_html):
+        return gr.update(interactive=True, value=stored), stored
+    return gr.update(interactive=False, value=False), stored
+
+
+def _manual_body_image_store_state(current_value, is_html, stored_value):
+    stored = bool(stored_value)
+    if not bool(is_html):
+        return stored
+    if isinstance(current_value, dict) and current_value.get('__type__') == 'update':
+        current_value = current_value.get('value')
+    return bool(current_value)
 
 
 def _leads_status(leads_file):
@@ -468,6 +477,7 @@ def _manual_multi_on_account_change(state, account):
     category = config.get('manual_category', 'Keep Original')
     doc_choice = config.get('manual_doc_choice', _MANUAL_DOC_OPTIONS[0])
     image_choice = config.get('manual_image_choice', _MANUAL_IMAGE_OPTIONS[0])
+    body_image_enabled = bool(config.get('manual_body_image_enabled'))
     attachment_files = list(config.get('manual_attachment_files') or [])
     inline_html = config.get('manual_inline_html', '')
     inline_name = config.get('manual_inline_name', 'inline.html')
@@ -481,7 +491,7 @@ def _manual_multi_on_account_change(state, account):
         gr.update(value=config.get('manual_subject', '')),
         gr.update(value=config.get('manual_body', '')),
         gr.update(value=bool(config.get('manual_body_is_html'))),
-        gr.update(value=bool(config.get('manual_body_image_enabled'))),
+        gr.update(value=body_image_enabled),
         gr.update(value=bool(config.get('manual_randomize_html'))),
         gr.update(value=config.get('manual_tfn', '')),
         gr.update(value=config.get('manual_extra_tags') or []),
@@ -499,6 +509,7 @@ def _manual_multi_on_account_change(state, account):
         gr.update(value=config.get('manual_sender_name', '')),
         gr.update(value=bool(config.get('manual_change_name', True))),
         gr.update(value=config.get('manual_sender_type', DEFAULT_SENDER_NAME_TYPE)),
+        body_image_enabled,
         updated_state,
     )
 
@@ -701,6 +712,7 @@ def gradio_ui():
 
                     with gr.TabItem('Manual', id='mode_manual') as manual_tab:
                         manual_tabs, manual_form = _build_manual_form('manual', tag_table_md)
+                        manual_body_image_state = gr.State(False)
 
                 advance_header = gr.Checkbox(
                     label="Advanced Header Pack",
@@ -716,6 +728,7 @@ def gradio_ui():
 
             with gr.TabItem('Multi Mode', id='page_multi') as multi_tab:
                 multi_account_state = gr.State({})
+                multi_body_image_state = gr.State(False)
                 multi_notice = gr.Markdown(
                     "Upload credential files on the Setup page to manage individual account configurations.",
                     visible=True
@@ -750,8 +763,14 @@ def gradio_ui():
 
         manual_form.body_is_html.change(
             _manual_body_image_toggle,
-            inputs=manual_form.body_is_html,
-            outputs=manual_form.body_image_enabled,
+            inputs=[manual_form.body_is_html, manual_body_image_state],
+            outputs=[manual_form.body_image_enabled, manual_body_image_state],
+        )
+
+        manual_form.body_image_enabled.change(
+            _manual_body_image_store_state,
+            inputs=[manual_form.body_image_enabled, manual_form.body_is_html, manual_body_image_state],
+            outputs=manual_body_image_state,
         )
 
         manual_form.attachment_enabled.change(
@@ -828,8 +847,14 @@ def gradio_ui():
 
         multi_form.body_is_html.change(
             _manual_body_image_toggle,
-            inputs=multi_form.body_is_html,
-            outputs=multi_form.body_image_enabled,
+            inputs=[multi_form.body_is_html, multi_body_image_state],
+            outputs=[multi_form.body_image_enabled, multi_body_image_state],
+        )
+
+        multi_form.body_image_enabled.change(
+            _manual_body_image_store_state,
+            inputs=[multi_form.body_image_enabled, multi_form.body_is_html, multi_body_image_state],
+            outputs=multi_body_image_state,
         )
 
         multi_form.attachment_enabled.change(
@@ -907,6 +932,7 @@ def gradio_ui():
                 multi_form.sender_name,
                 multi_form.change_name,
                 multi_form.sender_type,
+                multi_body_image_state,
                 multi_account_state,
             ],
         )
@@ -982,6 +1008,7 @@ def gradio_ui():
                 manual_form.body,
                 manual_form.body_is_html,
                 manual_form.body_image_enabled,
+                manual_body_image_state,
                 manual_form.randomize_html,
                 manual_form.tfn,
                 manual_form.extra_tags,
@@ -1027,4 +1054,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

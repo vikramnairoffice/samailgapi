@@ -1,7 +1,99 @@
 ﻿from pathlib import Path
 
 import base64
+import io
 import pytest
+
+HTML_BANNER = "
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"UTF-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>HTML banner</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --fg: #e2e8f0;
+      --accent: #38bdf8;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, Ubuntu, Cantarell, \"Helvetica Neue\", Arial, \"Noto Sans\", \"Apple Color Emoji\", \"Segoe UI Emoji\";
+      background: #f8fafc;
+    }
+    .html-banner {
+      background: linear-gradient(135deg, var(--bg), #1e293b);
+      color: var(--fg);
+      padding: clamp(16px, 5vw, 36px);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      border-radius: 14px;
+      box-shadow: 0 10px 20px rgba(2, 6, 23, 0.2);
+      max-width: 1100px;
+      margin: 24px auto;
+    }
+    .banner-text h1 {
+      margin: 0 0 6px 0;
+      font-size: clamp(22px, 4vw, 36px);
+      letter-spacing: 0.2px;
+    }
+    .banner-text p {
+      margin: 0;
+      opacity: 0.9;
+      font-size: clamp(14px, 1.6vw, 18px);
+    }
+    .banner-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .banner-cta a {
+      text-decoration: none;
+      background: var(--accent);
+      color: #0b1020;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      border: 2px solid transparent;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      display: inline-block;
+    }
+    .banner-cta a:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(56, 189, 248, 0.35);
+      background: #67e8f9;
+    }
+    .banner-cta a:active {
+      transform: translateY(0);
+    }
+    @media (max-width: 640px) {
+      .html-banner {
+        grid-template-columns: 1fr;
+        text-align: left;
+      }
+      .banner-cta {
+        justify-self: start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class=\"html-banner\" role=\"banner\" aria-label=\"Promotional banner\">
+    <div class=\"banner-text\">
+      <h1>HTML banner</h1>
+      <p>Clean, responsive, and copy-paste friendly. Replace this text with your message.</p>
+    </div>
+    <div class=\"banner-cta\">
+      <a href=\"#\" aria-label=\"Learn more\">Learn more</a>
+    </div>
+  </section>
+</body>
+</html>
+"
+
 
 import manual_mode
 from manual_mode import ManualAttachmentSpec, ManualConfig
@@ -96,6 +188,27 @@ def test_html_to_pdf_rendered_uses_playwright(monkeypatch, tmp_path):
     assert called['html'] == '<html></html>'
 
 def test_render_body_inline_png(monkeypatch, tmp_path):
+def test_render_body_png_preserves_layout():
+    config = ManualConfig(
+        enabled=True,
+        subject='',
+        body=HTML_BANNER,
+        body_is_html=True,
+        body_image_enabled=True,
+        tfn='',
+        randomize_html=False,
+    )
+    context = config.build_context('lead@example.com')
+    body, subtype = config.render_body(context)
+    assert subtype == 'html'
+    payload = body.split(',', 1)[1].split('"', 1)[0]
+    image = Image.open(io.BytesIO(base64.b64decode(payload)))
+    assert image.width >= 1000
+    assert image.height >= 600
+    top_left = image.getpixel((10, 10))
+    assert top_left != (255, 255, 255)
+
+
     calls = {}
 
     def fake_html_to_image(html, destination, image_format='PNG', zoom=2.0):

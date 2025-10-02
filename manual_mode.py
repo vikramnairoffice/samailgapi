@@ -183,7 +183,12 @@ def _trim_rendered_image(image: Image.Image, padding: int = 12) -> Image.Image:
     top = max(top - padding, 0)
     right = min(right + padding, rgb.width)
     bottom = min(bottom + padding, rgb.height)
-    return rgb.crop((left, top, right, bottom))
+    cropped = rgb.crop((left, top, right, bottom))
+    original_area = rgb.width * rgb.height
+    cropped_area = cropped.width * cropped.height
+    if original_area and cropped_area / original_area < 0.85:
+        return rgb
+    return cropped
 
 
 

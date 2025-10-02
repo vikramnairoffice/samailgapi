@@ -164,6 +164,23 @@ def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth') -> Tuple[str, st
     markdown = mailbox_rows_to_markdown(rows)
     return status, markdown
 
+def _extract_update_value(value):
+    if isinstance(value, dict) and value.get('__type__') == 'update':
+        return value.get('value')
+    return value
+
+
+def _resolve_manual_body_image_choice(*, body_is_html, checkbox_value, stored_value):
+    if not bool(body_is_html):
+        return False
+    if stored_value is not None:
+        extracted_state = _extract_update_value(stored_value)
+        if extracted_state is not None:
+            return bool(extracted_state)
+    extracted_checkbox = _extract_update_value(checkbox_value)
+    return bool(extracted_checkbox)
+
+
 @ui_error_wrapper()
 def start_manual_campaign(
     token_files,
@@ -562,6 +579,8 @@ def run_unified_campaign(
 
     manual_body_image_enabled,
 
+    manual_body_image_state,
+
     manual_randomize_html,
 
     manual_tfn,
@@ -618,6 +637,12 @@ def run_unified_campaign(
 
     if selected_mode == 'manual':
 
+        resolved_body_image_enabled = _resolve_manual_body_image_choice(
+            body_is_html=manual_body_is_html,
+            checkbox_value=manual_body_image_enabled,
+            stored_value=manual_body_image_state,
+        )
+
         generator = start_manual_campaign(
 
             token_files,
@@ -634,7 +659,7 @@ def run_unified_campaign(
 
             manual_body_is_html,
 
-            manual_body_image_enabled,
+            resolved_body_image_enabled,
 
             manual_randomize_html,
 

@@ -149,6 +149,51 @@ def test_manual_toggle_attachments_only_adjusts_visibility():
         assert set(update.keys()) <= {'visible', 'interactive', '__type__'}
 
 
+
+
+def test_manual_body_image_toggle_disables_without_resetting_state():
+    checkbox_update, state = ui._manual_body_image_toggle(False, True)
+    assert checkbox_update['interactive'] is False
+    assert checkbox_update['value'] is False
+    assert state is True
+
+
+def test_manual_body_image_toggle_reenables_with_previous_state():
+    checkbox_update, state = ui._manual_body_image_toggle(True, True)
+    assert checkbox_update['interactive'] is True
+    assert checkbox_update['value'] is True
+    assert state is True
+
+
+
+def test_manual_body_image_state_persists_when_html_disabled():
+    update, state = ui._manual_body_image_toggle(True, False)
+    stored = ui._manual_body_image_store_state(True, True, state)
+    update, state = ui._manual_body_image_toggle(False, stored)
+    assert update['value'] is False
+    stored_after_disable = ui._manual_body_image_store_state(False, False, stored)
+    assert stored_after_disable is True
+    update, state = ui._manual_body_image_toggle(True, stored_after_disable)
+    assert update['value'] is True
+    assert state is True
+
+
+def test_resolve_manual_body_image_choice_prefers_stored_state():
+    choice = helpers._resolve_manual_body_image_choice(
+        body_is_html=True,
+        checkbox_value=False,
+        stored_value=True,
+    )
+    assert choice is True
+
+    choice = helpers._resolve_manual_body_image_choice(
+        body_is_html=False,
+        checkbox_value=True,
+        stored_value=True,
+    )
+    assert choice is False
+
+
 def _is_descendant(component, ancestor):
     parent = getattr(component, 'parent', None)
     while parent is not None:
@@ -220,3 +265,57 @@ def test_manual_preview_mode_radio_within_preview_tab():
     labels = _collect_parent_labels(preview_radio)
     assert 'Manual' in labels
     assert 'Preview' in labels
+
+
+
+
+def test_run_unified_campaign_uses_stored_body_image_state(monkeypatch):
+    captured = {}
+
+    def fake_start_manual_campaign(*args, **kwargs):
+        captured['body_image_enabled'] = args[7]
+        def _gen():
+            yield ('status', '', '')
+        return _gen()
+
+    monkeypatch.setattr(helpers, 'start_manual_campaign', fake_start_manual_campaign)
+
+    generator = helpers.run_unified_campaign(
+        active_ui_mode='manual',
+        token_files=[],
+        leads_file=None,
+        send_delay_seconds=0,
+        mode='gmail',
+        email_content_mode='Attachment',
+        attachment_folder='',
+        invoice_format='pdf',
+        support_number='',
+        manual_subject='Subject',
+        manual_body='<div>body</div>',
+        manual_body_is_html=True,
+        manual_body_image_enabled=False,
+        manual_body_image_state=True,
+        manual_randomize_html=False,
+        manual_tfn='',
+        manual_extra_tags=[],
+        manual_attachment_enabled=False,
+        manual_attachment_mode='original',
+        manual_attachment_files=[],
+        manual_inline_html='',
+        manual_inline_name='',
+        manual_sender_name='',
+        manual_change_name=False,
+        manual_sender_type='business',
+        advance_header=False,
+        force_header=False,
+        auth_mode='oauth',
+        sender_name_type='business',
+        content_template=None,
+        subject_template=None,
+        body_template=None,
+    )
+
+    next(generator)
+
+    assert captured['body_image_enabled'] is True
+
