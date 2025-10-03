@@ -35,3 +35,12 @@ Test pending
 1 With Own Cotnet + R1 Tag + R1 Advance Head 
 1 With Own Content + R1 Tag + R1 Advance Head + Force
 5 For Multi threading Among The best performing above
+
+
+Feature To impliment
+Cancer reply for Checking data quality 
+Own Email Respones for checking inboxing 
+R1 HTML Ranomization feature 
+UI ORchestor for morre streamlined ui 
+HTML Randomization feature with Complete Template 
+HTML Prview in browser only. 
