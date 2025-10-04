@@ -51,3 +51,5 @@ Parsing Content
 Genearting Prompt 
 
 Create a script to cover all feature for testing. 
+Lead distribuation in all mode with multiple smtp 
+OWn Testing dropdown where you can add specific txt and mailer will test on those 

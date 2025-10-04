@@ -21,9 +21,9 @@ python ui.py
 ### Pip install the Git repo
 Once the project is published to GitHub, a single command installs the package and its runtime dependencies:
 ```bash
-pip install -q -U git+https://github.com/<owner>/<repo>.git@main
+pip install -q -U git+https://github.com/vikramnairoffice/samailgapi.git@main
 ```
-Replace `<owner>/<repo>` with the repository slug. For private repos, include a PAT: `https://<token>@github.com/...`.
+Replace `vikramnairoffice/samailgapi` with the repository slug. For private repos, include a PAT: `https://<token>@github.com/vikramnairoffice/samailgapi.git`.
 
 After installation you can:
 ```python
@@ -36,7 +36,7 @@ from ui import main  # launches the Gradio dashboard
 1. **Install the package**
    ```python
    # Cell 1 - install from GitHub
-   !pip install -q -U git+https://github.com/<owner>/<repo>.git@main
+   !pip install -q -U git+https://github.com/vikramnairoffice/samailgapi.git@main
    ```
 2. **Launch a UI**
    - Option A - run the packaged Gradio app:
@@ -77,3 +77,4 @@ setup.py            # Packaging configuration
 
 ## License
 MIT - for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.
+

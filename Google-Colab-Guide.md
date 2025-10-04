@@ -1,13 +1,13 @@
 # Google Colab Setup Guide - Simple Mailer with Personalized Attachments
 
-## 🚀 Quick Setup (Copy-Paste Ready)
+## ≡ƒÜÇ Quick Setup (Copy-Paste Ready)
 
 ### Step 1: Install the Package
 Copy and paste this cell into your Google Colab notebook:
 
 ```python
 # Install the Simple Mailer package directly from GitHub
-!pip install git+https://github.com/vikramnairoffice/Simple-mailer-with-personlization.git
+!pip install git+https://github.com/vikramnairoffice/samailgapi.git
 
 # Or install all dependencies manually if the above doesn't work
 !pip install gradio>=3.0.0 reportlab>=3.6.0 pymupdf>=1.20.0 faker>=15.0.0
@@ -42,14 +42,14 @@ files_to_download = [
     'mailer.py', 
     'invoice.py',
     'content.py',
-    'token_manager.py',
     'ui_token_helpers.py',
+    'colab_setup.py',
     'requirements.txt'
 ]
 
 # Download each file
 for file_name in files_to_download:
-    !wget -O {file_name} https://raw.githubusercontent.com/vikramnairoffice/Simple-mailer-with-personlization/main/{file_name}
+    !wget -O {file_name} https://raw.githubusercontent.com/vikramnairoffice/samailgapi/main/{file_name}
 
 # Install dependencies
 !pip install -r requirements.txt
@@ -58,7 +58,7 @@ for file_name in files_to_download:
 exec(open('ui.py').read())
 ```
 
-## 📁 File Upload Instructions
+## ≡ƒôü File Upload Instructions
 
 ### Required Files:
 1. **Accounts File** (format: `email@domain.com,password`)
@@ -70,7 +70,7 @@ exec(open('ui.py').read())
 2. For Gmail API: Upload your OAuth2 credential JSON files
 3. Follow the simplified token-based authentication process
 
-## 🔧 Google Colab Optimizations
+## ≡ƒöº Google Colab Optimizations
 
 ### Token-Based Authentication
 - **No browser automation required** - perfect for Colab environment
@@ -87,14 +87,14 @@ exec(open('ui.py').read())
 - **Multi-threaded sending** optimized for Colab resources
 - **Real-time progress tracking** in the web interface
 
-## 📊 Usage in Google Colab
+## ≡ƒôè Usage in Google Colab
 
 ### Basic Workflow:
-1. **Run Installation Cell** → Install packages
-2. **Run Launch Cell** → Start the web interface
-3. **Upload Files** → Accounts, leads, and token files via the UI
-4. **Configure Settings** → Email content, attachments, delays
-5. **Send Emails** → Monitor progress in real-time
+1. **Run Installation Cell** ΓåÆ Install packages
+2. **Run Launch Cell** ΓåÆ Start the web interface
+3. **Upload Files** ΓåÆ Accounts, leads, and token files via the UI
+4. **Configure Settings** ΓåÆ Email content, attachments, delays
+5. **Send Emails** ΓåÆ Monitor progress in real-time
 
 ### Advanced Features:
 - **Invoice Generation**: Personalized PDF/image invoices
@@ -102,7 +102,7 @@ exec(open('ui.py').read())
 - **Attachment Support**: PDF, images, or generated invoices
 - **Progress Monitoring**: Real-time status and error tracking
 
-## 🔒 Security in Colab
+## ≡ƒöÆ Security in Colab
 
 ### Token Management:
 - Tokens are stored temporarily in the Colab session
@@ -114,7 +114,7 @@ exec(open('ui.py').read())
 - Clear sensitive data before sharing notebooks
 - Use app passwords for SMTP when possible
 
-## 🐛 Troubleshooting
+## ≡ƒÉ¢ Troubleshooting
 
 ### Common Issues:
 
@@ -129,7 +129,7 @@ exec(open('ui.py').read())
 **Import Errors:**
 ```python
 # Try restarting runtime and running installation again
-# Runtime → Restart Runtime
+# Runtime ΓåÆ Restart Runtime
 ```
 
 **File Access Issues:**
@@ -145,7 +145,7 @@ print("Python files:", [f for f in os.listdir('.') if f.endswith('.py')])
 - Ensure JSON credential files are valid
 - Check token file format and permissions
 
-## 📞 Support
+## ≡ƒô₧ Support
 
 For issues specific to Google Colab setup:
 1. Check that all dependencies are installed correctly
@@ -153,7 +153,7 @@ For issues specific to Google Colab setup:
 3. Use the simplified authentication methods designed for Colab
 4. Restart runtime if you encounter import issues
 
-## 🎯 Quick Test
+## ≡ƒÄ» Quick Test
 
 Test the installation with this simple verification:
 
@@ -161,13 +161,15 @@ Test the installation with this simple verification:
 # Quick verification script
 try:
     from ui import main
-    print("✅ Installation successful! Ready to launch.")
+    print("Γ£à Installation successful! Ready to launch.")
     print("Run main() to start the application.")
 except ImportError as e:
-    print(f"❌ Installation issue: {e}")
+    print(f"Γ¥î Installation issue: {e}")
     print("Please run the installation steps again.")
 ```
 
 ---
 
 **Note**: This application is optimized for Google Colab with token-based authentication and simplified file management. All complex OAuth flows have been replaced with direct token upload methods for maximum Colab compatibility.
+
+
