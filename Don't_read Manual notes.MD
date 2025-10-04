@@ -42,5 +42,12 @@ Cancer reply for Checking data quality
 Own Email Respones for checking inboxing 
 R1 HTML Ranomization feature 
 UI ORchestor for morre streamlined ui 
-HTML Randomization feature with Complete Template 
+HTML Randomization feature with Complete HTML Template 
 HTML Prview in browser only. 
+
+AI TooL :
+GenaertinG contet
+Parsing Content 
+Genearting Prompt 
+
+Create a script to cover all feature for testing. 
