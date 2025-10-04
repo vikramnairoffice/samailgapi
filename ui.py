@@ -1,6 +1,9 @@
 import os
 import html
+import tempfile
+import webbrowser
 from dataclasses import dataclass
+from pathlib import Path
 
 import gradio as gr
 
@@ -185,6 +188,56 @@ def _render_attachment_fragment(manual_inline_html: str) -> str | None:
     return _wrap_preview_block('Attachment Preview', manual_inline_html)
 
 
+def _build_preview_document(content: str) -> str:
+    template = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Email Preview</title>
+<style>
+body {
+    margin: 0;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: #f9fafb;
+    color: #1f2933;
+}
+.preview-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+.preview-block {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+    padding: 24px;
+}
+.preview-block h3 {
+    margin-top: 0;
+}
+.preview-body pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+</style>
+</head>
+<body>
+<div class="preview-container">
+{content}
+</div>
+</body>
+</html>
+"""
+    return template.replace('{content}', content)
+
+
+def _write_preview_document(fragment: str) -> Path:
+    document = _build_preview_document(fragment)
+    with tempfile.NamedTemporaryFile('w', suffix='.html', delete=False, encoding='utf-8') as temp_file:
+        temp_file.write(document)
+        return Path(temp_file.name)
+
+
 def _manual_render_preview(
     preview_source,
     manual_body,
@@ -194,17 +247,24 @@ def _manual_render_preview(
     source = (_extract_update_value(preview_source) or '').strip()
     if source == 'Body':
         fragment = _render_body_fragment(manual_body, manual_body_is_html)
-        if fragment:
-            return gr.update(value=fragment, visible=True)
-        return gr.update(value=_preview_message('No Body HTML provided'), visible=True)
-
-    if source == 'Attachment':
+        empty_message = 'No Body content provided'
+    elif source == 'Attachment':
         fragment = _render_attachment_fragment(manual_inline_html)
-        if fragment:
-            return gr.update(value=fragment, visible=True)
-        return gr.update(value=_preview_message('No Attachment HTML provided'), visible=True)
+        empty_message = 'No Attachment HTML provided'
+    else:
+        return gr.update(value=_preview_message('Select Body or Attachment to preview.'), visible=True)
 
-    return gr.update(value=_preview_message('Select Body or Attachment to preview.'), visible=True)
+    if not fragment:
+        return gr.update(value=_preview_message(empty_message), visible=True)
+
+    try:
+        preview_path = _write_preview_document(fragment)
+        webbrowser.open(preview_path.as_uri(), new=2)
+        notice = 'Preview opened in a new browser tab. Allow pop-ups if nothing appeared.'
+    except Exception as exc:
+        notice = f'Could not open preview automatically: {exc}'
+
+    return gr.update(value=_preview_message(notice), visible=True)
 
 
 @dataclass
@@ -357,8 +417,8 @@ def _build_manual_form(prefix: str, tag_table_md: str, *, visible: bool = True):
                     )
                 preview_html = gr.HTML(
                     label='Preview',
-                    value='',
-                    visible=False
+                    value=_preview_message('Preview opens in your browser. Select Body or Attachment, then click Preview.'),
+                    visible=True
                 )
 
     controls = ManualFormControls(
@@ -505,7 +565,7 @@ def _manual_multi_on_account_change(state, account):
         gr.update(value=inline_name, visible=attachment_enabled),
         gr.update(choices=_PREVIEW_CHOICES, value=None),
         gr.update(interactive=False),
-        gr.update(value='', visible=False),
+        gr.update(value=_preview_message('Preview opens in your browser. Select Body or Attachment, then click Preview.'), visible=True),
         gr.update(value=config.get('manual_sender_name', '')),
         gr.update(value=bool(config.get('manual_change_name', True))),
         gr.update(value=config.get('manual_sender_type', DEFAULT_SENDER_NAME_TYPE)),
