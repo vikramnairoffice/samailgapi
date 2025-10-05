@@ -1,4 +1,4 @@
-﻿import base64
+import base64
 import datetime
 import glob
 import os
@@ -19,6 +19,7 @@ import requests
 from email.utils import formatdate, make_msgid
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from credentials import validation as credential_validation
 
 from content import (
     SEND_DELAY_SECONDS,
@@ -52,20 +53,8 @@ _EXTRA_MIME_TYPES = {
 
 def update_file_stats(token_files, leads_file, auth_mode: str = 'oauth'):
     """Return simple status strings for credential and lead uploads."""
-    mode = (auth_mode or 'oauth').lower()
-    if mode in {'app_password', 'app-password', 'app password'}:
-        accounts, errors = load_app_password_files(token_files)
-        if accounts:
-            token_msg = f"{len(accounts)} app password(s) parsed"
-        else:
-            token_msg = "No app password entries found"
-        if errors:
-            token_msg += f"; issues: {'; '.join(errors[:3])}"
-            if len(errors) > 3:
-                token_msg += '; more issues omitted'
-    else:
-        token_count = len(token_files or [])
-        token_msg = f"{token_count} token file(s) selected" if token_count else "No token files uploaded"
+    summary = credential_validation.validate_files(token_files, auth_mode)
+    token_msg = summary.status
 
     leads_msg = "Using GMass default seed list."
     if leads_file:
@@ -261,86 +250,30 @@ def send_app_password_message(login_email: str, from_header: str, app_password: 
 
 def load_token_files(token_files: Optional[List[Any]]) -> Tuple[List[Dict[str, Any]], List[str]]:
     """Validate uploaded token files and return (valid_accounts, error_messages)."""
-    valid_accounts: List[Dict[str, Any]] = []
-    errors: List[str] = []
-
-    for file_obj in token_files or []:
-        path = getattr(file_obj, 'name', None) or str(file_obj)
-        try:
-            email, creds = load_gmail_token(path)
-        except Exception as exc:
-            errors.append(f"{os.path.basename(path)}: {exc}")
-            continue
-        valid_accounts.append({'email': email, 'creds': creds, 'path': path, 'auth_type': 'oauth'})
-
-    return valid_accounts, errors
+    _, file_inputs, in_memory_errors = credential_validation.partition_token_inputs(token_files)
+    accounts, errors = credential_validation.load_oauth_entries(file_inputs, loader=load_gmail_token)
+    if in_memory_errors:
+        errors = list(errors) + in_memory_errors
+    return accounts, errors
 
 
 
 def load_app_password_files(token_files: Optional[List[Any]]) -> Tuple[List[Dict[str, Any]], List[str]]:
-    accounts: List[Dict[str, Any]] = []
-    errors: List[str] = []
-
-    for file_obj in token_files or []:
-        path = getattr(file_obj, 'name', None) or str(file_obj)
-        try:
-            with open(path, 'r', encoding='utf-8', errors='ignore') as handle:
-                for line_number, raw_line in enumerate(handle, start=1):
-                    line = raw_line.strip()
-                    if not line:
-                        continue
-                    if line.count(',') != 1:
-                        errors.append(f"{os.path.basename(path)} line {line_number}: invalid entry")
-                        continue
-                    parts = [segment.strip() for segment in line.split(',', 1)]
-                    if len(parts) != 2 or not parts[0] or not parts[1]:
-                        errors.append(f"{os.path.basename(path)} line {line_number}: invalid entry")
-                        continue
-                    email, password = parts
-                    accounts.append({
-                        'email': email,
-                        'password': password,
-                        'path': f"{path}:{line_number}",
-                        'auth_type': 'app_password',
-                    })
-        except Exception as exc:
-            errors.append(f"{os.path.basename(path)}: {exc}")
-
+    """Parse uploaded app password files and return (accounts, errors)."""
+    _, file_inputs, in_memory_errors = credential_validation.partition_token_inputs(token_files)
+    accounts, errors = credential_validation.load_app_password_entries(file_inputs)
+    if in_memory_errors:
+        errors = list(errors) + in_memory_errors
     return accounts, errors
 
 
 
 def load_accounts(token_files: Optional[List[Any]], auth_mode: str = 'oauth') -> Tuple[List[Dict[str, Any]], List[str]]:
-    mode = (auth_mode or 'oauth').lower()
-    in_memory_accounts: List[Dict[str, Any]] = []
-    file_inputs: List[Any] = []
-    in_memory_errors: List[str] = []
-
-    for entry in token_files or []:
-        if isinstance(entry, dict) and entry.get('__in_memory_oauth__'):
-            email = (entry.get('email') or '').strip()
-            creds = entry.get('creds')
-            label = entry.get('label') or email or 'in-memory credential'
-            if email and creds:
-                in_memory_accounts.append({
-                    'email': email,
-                    'creds': creds,
-                    'path': label,
-                    'auth_type': 'oauth',
-                })
-            else:
-                in_memory_errors.append(f"{label}: in-memory credential is missing required data")
-            continue
-        file_inputs.append(entry)
-
-    if mode in {'app_password', 'app-password', 'app password'}:
-        return load_app_password_files(file_inputs)
-
-    accounts, errors = load_token_files(file_inputs)
-    accounts.extend(in_memory_accounts)
-    if in_memory_errors:
-        errors = list(errors) + in_memory_errors
-    return accounts, errors
+    """Return parsed account entries and any validation errors for the given mode."""
+    mode = credential_validation.normalize_mode(auth_mode)
+    loader = load_gmail_token if mode != 'app_password' else None
+    summary = credential_validation.validate_files(token_files, auth_mode, loader=loader)
+    return summary.accounts, summary.errors
 
 
 def read_leads_file(leads_file) -> List[str]:
@@ -569,6 +502,11 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_sec
         'kind': 'done',
         'message': f"Completed {total_attempts} send attempt(s) with {successes} success(es).",
     }
+
+
+
+
+
 
 
 

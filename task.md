@@ -77,7 +77,7 @@ Use this board to coordinate parallel sessions. Each task lists its prerequisite
 | ID | Title | Summary | Dependencies | Parallel | Deliverables | Status |
 |----|-------|---------|--------------|---------|--------------|--------|
 | G3-T1 | OAuth In-Memory Flow | Implement credentials/oauth_json adapter + UI integration. | G0-T1, G2-T1 | Sequenced Only | Adapter module, tests, UX copy updates | COMPLETE |
-| G3-T2 | Shared Validation Library | Unify credential validation + status messaging across modes. | G3-T1 | Parallel OK | Shared helpers, tests, doc updates | TODO |
+| G3-T2 | Shared Validation Library | Unify credential validation + status messaging across modes. | G3-T1 | Parallel OK | Shared helpers, tests, doc updates | COMPLETE |
 
 ## Gate 4 - Feature Integration Guarding
 | ID | Title | Summary | Dependencies | Parallel | Deliverables | Status |
@@ -95,6 +95,9 @@ Use this board to coordinate parallel sessions. Each task lists its prerequisite
 |----|-------|---------|--------------|---------|--------------|--------|
 | G6-T1 | Legacy Path Retirement | Remove unused legacy wiring once adapters proven. | Gates 1-4 | Sequenced Only | Code removal, changelog, doc updates | TODO |
 | G6-T2 | Final Docs & Blueprint Audit | Refresh docs/blueprints/tests to reflect finished architecture. | G6-T1 | Sequenced Only | Doc sweep, blueprint diff report | TODO |
+
+
+
 
 
 

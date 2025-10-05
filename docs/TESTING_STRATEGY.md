@@ -10,7 +10,7 @@ Principles
 - core/leads_csv: parses header email,fname,lname, handles missing/blank values  empty strings, matches legacy parser fixtures.
 - core/spintax: adapter tests assert tag context overrides, injected RNG control, and the combined render+spintax helper stay aligned with legacy outputs.
 - core/attachments: chooses static vs invoice using manual_mode adapter; validates conversion matrix (PDF/PNG/HEIF/DOCX).
-- credentials/*: token/app password/OAuth loaders share validation tests to guarantee identical error messaging.
+- credentials/*: token/app password/OAuth loaders share validation tests to guarantee identical error messaging (see tests/test_credentials_validation.py).
 - OAuth fixtures assert shared Gmail+Drive scope availability so adapters never request duplicate consent.
 - senders/gmail_rest: builds MIME with headers/attachments; parity fixtures compare generated payloads with legacy outputs.
 - senders/gmail_smtp: guards required credentials, normalises headers, and wraps legacy SMTP send + mailbox metrics errors for actionable messages.
@@ -57,3 +57,4 @@ Principles
 
 - `tests/test_html_randomizer.py` uses seeds 7, 9, and 42 to preserve colour and font order mutations for parity runs.
 - `tests/test_mailer_parity.py` relies on patched RNG boundaries; no random seeds required because subject/body generation is stubbed for deterministic assertions.
+

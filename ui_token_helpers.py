@@ -18,7 +18,7 @@ from manual.manual_preview_adapter import (
 
 
 
-from credentials import oauth_json
+from credentials import oauth_json, validation as credential_validation
 
 def analyze_token_files(token_files, auth_mode: str = 'oauth') -> str:
     """Return a short status string for uploaded credential files."""
@@ -115,8 +115,8 @@ def merge_token_sources(token_files, oauth_accounts):
 def authorize_oauth_client(client_json: str, existing_accounts, auth_mode: str = 'gmail_api'):
     """Run the OAuth flow and return (status_message, updated_accounts)."""
     accounts = list(existing_accounts or [])
-    mode = (auth_mode or 'gmail_api').strip().lower()
-    if mode not in {'gmail_api', 'gmail', 'oauth', 'oauth_json', 'oauth-memory'}:
+    mode = credential_validation.normalize_mode(auth_mode)
+    if mode != 'oauth':
         return (
             'Enable the Gmail API credential mode to authorise OAuth credentials.',
             accounts,
@@ -802,6 +802,9 @@ def run_multi_manual_campaign(
             prefix = f"[{account_label}] " if message else f"[{account_label}]"
 
             yield (f"{prefix}{message}", "", "")
+
+
+
 
 
 

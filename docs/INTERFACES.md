@@ -42,19 +42,7 @@ class InvoiceGenerator:
     def generate_for_recipient(email: str, phone_numbers: str, fmt: str) -> str
 ```
 
-## Credentials
-```
-# credentials/token_json.py
-def load(path: str) -> tuple[str, Credentials]
-
-# credentials/app_password.py
-def load(path: str) -> list[dict]  # email, app_password, optional cap
-
-def fetch_mailbox_totals(email: str, password: str) -> dict  # optional metrics
-
-# credentials/oauth_json.py
-def initialize(client_json: str) -> tuple[str, Credentials]  # in-memory tokens with Gmail+Drive scopes
-```
+## Credentials\r\n```\r\n# credentials/token_json.py\r\ndef load(path: str) -> tuple[str, Credentials]\r\n\r\n# credentials/app_password.py\r\ndef load(path: str) -> list[dict]  # email, app_password, optional cap\r\n\r\ndef fetch_mailbox_totals(email: str, password: str) -> dict  # optional metrics\r\n\r\n# credentials/oauth_json.py\r\ndef initialize(client_json: str) -> tuple[str, Credentials]  # in-memory tokens with Gmail+Drive scopes\r\n\r\n# credentials/validation.py\r\nclass ValidationResult:\r\n    mode: str\r\n    accounts: list[dict]\r\n    errors: list[str]\r\n    status: str\r\n\r\ndef normalize_mode(auth_mode: str | None) -> str\r\n\r\ndef validate_files(token_files, auth_mode, *, loader=None) -> ValidationResult\r\n```
 
 ## Sending & Execution
 ```
@@ -118,3 +106,5 @@ def attachment_preview(specs: Sequence[ManualAttachmentSpec], selected_name: str
 ```
 
 Adapters keep the Gradio manual preview outputs stable while the orchestrator is decomposed.
+
+
