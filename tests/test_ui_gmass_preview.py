@@ -171,20 +171,27 @@ def _collect_parent_labels(component):
     return labels
 
 
-def test_automated_mode_has_setup_and_preview_tabs():
+def test_automatic_mode_has_deliverability_preview_section():
     demo = ui.gradio_ui()
     blocks = list(demo.blocks.values())
-    automated_tab = next(comp for comp in blocks if type(comp).__name__ == 'Tab' and comp.label == 'Automated Mode')
-    nested_tabs = [
+    mode_tabs = next(
         comp for comp in blocks
-        if type(comp).__name__ == 'Tabs' and _is_descendant(comp, automated_tab)
-    ]
-    assert any([child.label for child in tabs.children] == ['Setup', 'Preview'] for tabs in nested_tabs)
+        if type(comp).__name__ == 'Tabs' and getattr(comp, 'elem_id', None) == 'mode-tabs'
+    )
+    automatic_tab = next(child for child in mode_tabs.children if child.label == 'Automatic')
+    preview_accordion = next(
+        comp for comp in blocks
+        if type(comp).__name__ == 'Accordion'
+        and getattr(comp, 'label', None) == 'GMass Deliverability Preview'
+        and _is_descendant(comp, automatic_tab)
+    )
+    assert preview_accordion.label == 'GMass Deliverability Preview'
 
 
-def test_gmass_preview_widgets_within_preview_tab():
+def test_gmass_preview_widgets_within_preview_group():
     demo = ui.gradio_ui()
     gmass_status = next(comp for comp in demo.blocks.values() if getattr(comp, 'label', None) == 'GMass Status')
     labels = _collect_parent_labels(gmass_status)
-    assert 'Automated Mode' in labels
-    assert 'Preview' in labels
+    assert 'Automatic' in labels
+    assert 'GMass Deliverability Preview' in labels
+

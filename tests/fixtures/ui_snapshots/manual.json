@@ -1,0 +1,120 @@
+{
+  "components": [
+    {
+      "elem_id": null,
+      "label": "Available Tags",
+      "type": "Accordion"
+    },
+    {
+      "elem_id": null,
+      "label": "Body Content as HTML",
+      "type": "Checkbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Change name every time",
+      "type": "Checkbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Convert HTML body to inline PNG",
+      "type": "Checkbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Include Attachment",
+      "type": "Checkbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Randomize HTML styling",
+      "type": "Checkbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Additional Tags",
+      "type": "Dataframe"
+    },
+    {
+      "elem_id": null,
+      "label": "Attachment Files",
+      "type": "Files"
+    },
+    {
+      "elem_id": null,
+      "label": "Preview",
+      "type": "HTML"
+    },
+    {
+      "elem_id": null,
+      "label": "Attachment Conversion Type",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Document Formats",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Image Formats",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Preview Source",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Sender Name Style",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Preview",
+      "type": "Tab"
+    },
+    {
+      "elem_id": null,
+      "label": "Setup",
+      "type": "Tab"
+    },
+    {
+      "elem_id": null,
+      "label": "Body",
+      "type": "Textbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Inline Attachment HTML",
+      "type": "Textbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Inline Attachment Name",
+      "type": "Textbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Resolved Attachment Mode",
+      "type": "Textbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Sender Name",
+      "type": "Textbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Subject",
+      "type": "Textbox"
+    },
+    {
+      "elem_id": null,
+      "label": "TFN Number",
+      "type": "Textbox"
+    }
+  ],
+  "exists": true
+}

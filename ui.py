@@ -247,7 +247,7 @@ def _manual_render_preview(
     source = (_extract_update_value(preview_source) or '').strip()
     if source == 'Body':
         fragment = _render_body_fragment(manual_body, manual_body_is_html)
-        empty_message = 'No Body content provided'
+        empty_message = 'No Body HTML provided'
     elif source == 'Attachment':
         fragment = _render_attachment_fragment(manual_inline_html)
         empty_message = 'No Attachment HTML provided'
@@ -257,14 +257,15 @@ def _manual_render_preview(
     if not fragment:
         return gr.update(value=_preview_message(empty_message), visible=True)
 
+    notice_html = ''
     try:
         preview_path = _write_preview_document(fragment)
         webbrowser.open(preview_path.as_uri(), new=2)
-        notice = 'Preview opened in a new browser tab. Allow pop-ups if nothing appeared.'
+        notice_html = _preview_message('Preview opened in a new browser tab. Allow pop-ups if nothing appeared.')
     except Exception as exc:
-        notice = f'Could not open preview automatically: {exc}'
+        notice_html = _preview_message(f'Could not open preview automatically: {exc}')
 
-    return gr.update(value=_preview_message(notice), visible=True)
+    return gr.update(value=f"{fragment}{notice_html}", visible=True)
 
 
 @dataclass

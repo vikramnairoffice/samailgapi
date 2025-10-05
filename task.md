@@ -20,7 +20,8 @@ Use this board to coordinate parallel sessions. Each task lists its prerequisite
 
 | Task ID | Agent | Status | Notes |
 |---------|-------|--------|-------|
-|         |       |        |       |
+| G0-T2 | Codex | COMPLETE | Snapshot fixtures & README note added |
+| G0-T3 | Codex | COMPLETE | Design doc + implementation ticket posted |
 |         |       |        |       |
 |         |       |        |       |
 
@@ -30,9 +31,9 @@ Use this board to coordinate parallel sessions. Each task lists its prerequisite
 ## Gate 0 - Guardrails & Snapshots (blocking, run sequentially)
 | ID | Title | Summary | Dependencies | Parallel | Deliverables | Status |
 |----|-------|---------|--------------|---------|--------------|--------|
-| G0-T1 | Parity Suite Expansion | Add send/content/invoice/header/delay/randomizer parity tests; ensure deterministic seeds documented. | None | Sequenced Only | Updated tests in tests/, doc note in docs/TESTING_STRATEGY.md | TODO |
-| G0-T2 | UI Snapshot Baselines | Capture manual/automatic/drive/multi Gardio blueprints + Gradio snapshots; check into fixtures. | G0-T1 | Sequenced Only | Snapshot fixtures, README coverage note | TODO |
-| G0-T3 | Live Token Smoke Spec | Design opt-in live-token harness (send + retrieve + drive share) without implementation; document plan. | G0-T1 | Sequenced Only | Design doc entry in docs/TESTING_STRATEGY.md, task ticket for implementation | TODO |
+| G0-T1 | Parity Suite Expansion | Add send/content/invoice/header/delay/randomizer parity tests; ensure deterministic seeds documented. | None | Sequenced Only | Updated tests in tests/, doc note in docs/TESTING_STRATEGY.md | COMPLETE |
+| G0-T2 | UI Snapshot Baselines | Capture manual/automatic/drive/multi Gardio blueprints + Gradio snapshots; check into fixtures. | G0-T1 | Sequenced Only | Snapshot fixtures, README coverage note | COMPLETE |
+| G0-T3 | Live Token Smoke Spec | Design opt-in live-token harness (send + retrieve + drive share) without implementation; document plan. | G0-T1 | Sequenced Only | Design doc entry in docs/TESTING_STRATEGY.md, task ticket for implementation | COMPLETE |
 
 ## Gate 1 - Adapter Layer (lanes can run in parallel after Gate 0)
 

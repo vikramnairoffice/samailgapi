@@ -70,6 +70,11 @@ requirements.txt    # Runtime dependencies
 setup.py            # Packaging configuration
 ```
 
+## Snapshot Baselines
+- `tests/fixtures/gardio_blueprints/` keeps PNG baselines for manual, automatic, drive share, and multi mode Gardio layouts.
+- `tests/fixtures/ui_snapshots/` holds JSON snapshots of the Gradio UI modes so structural changes surface in tests.
+- Run `python -m pytest tests/test_gardio_ui.py tests/test_ui_snapshots.py` after UI tweaks to confirm the guardrails stay green.
+
 ## Development tips
 - `python colab_setup.py` on a workstation installs notebook extras and launches the UI.
 - Use the console script after installation: `simple-mailer`.

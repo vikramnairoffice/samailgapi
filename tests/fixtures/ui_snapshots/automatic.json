@@ -1,0 +1,55 @@
+{
+  "components": [
+    {
+      "elem_id": null,
+      "label": "GMass Deliverability Preview",
+      "type": "Accordion"
+    },
+    {
+      "elem_id": null,
+      "label": "GMass Deliverability URLs",
+      "type": "Markdown"
+    },
+    {
+      "elem_id": null,
+      "label": "Body Template",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Email Content",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Invoice Format",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Sender Name Style",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Subject Template",
+      "type": "Radio"
+    },
+    {
+      "elem_id": null,
+      "label": "Attachment Folder",
+      "type": "Textbox"
+    },
+    {
+      "elem_id": null,
+      "label": "GMass Status",
+      "type": "Textbox"
+    },
+    {
+      "elem_id": null,
+      "label": "Support Numbers (one per line)",
+      "type": "Textbox"
+    }
+  ],
+  "exists": true
+}
