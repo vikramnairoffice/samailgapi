@@ -53,7 +53,7 @@ def load(path: str) -> list[dict]  # email, app_password, optional cap
 def fetch_mailbox_totals(email: str, password: str) -> dict  # optional metrics
 
 # credentials/oauth_json.py
-def initialize(client_json: str) -> Credentials  # in-memory tokens; returns Gmail+Drive scope credentials
+def initialize(client_json: str) -> tuple[str, Credentials]  # in-memory tokens with Gmail+Drive scopes
 ```
 
 ## Sending & Execution

@@ -75,7 +75,7 @@ def test_start_campaign_appends_gmass_preview(monkeypatch):
     preview_status = 'Completed! Check 1 GMass URLs.'
     preview_rows = [['niao78@gmail.com', 'https://www.gmass.co/inbox?q=niao78']]
 
-    monkeypatch.setattr(helpers, 'build_gmass_preview', lambda mode, tokens, auth_mode='oauth': (preview_status, preview_rows))
+    monkeypatch.setattr(helpers, 'build_gmass_preview', lambda mode, tokens, auth_mode='oauth', oauth_accounts=None: (preview_status, preview_rows))
 
     def fake_campaign_events(**kwargs):
         yield {
@@ -121,7 +121,7 @@ def test_start_campaign_appends_gmass_preview(monkeypatch):
 
 
 def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
-    monkeypatch.setattr(helpers, 'build_gmass_preview', lambda mode, tokens, auth_mode='oauth': ('unexpected', [['x']]))
+    monkeypatch.setattr(helpers, 'build_gmass_preview', lambda mode, tokens, auth_mode='oauth', oauth_accounts=None: ('unexpected', [['x']]))
     monkeypatch.setattr(helpers, 'gmass_rows_to_markdown', lambda rows: 'should-not-appear')
 
     def fake_campaign_events(**kwargs):

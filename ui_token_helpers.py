@@ -4,7 +4,7 @@ import html as _html_module
 import traceback
 import requests
 from functools import wraps
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
 from mailer import campaign_events, update_file_stats, load_accounts, fetch_mailbox_totals_app_password
@@ -17,6 +17,8 @@ from manual.manual_preview_adapter import (
 )
 
 
+
+from credentials import oauth_json
 
 def analyze_token_files(token_files, auth_mode: str = 'oauth') -> str:
     """Return a short status string for uploaded credential files."""
@@ -61,12 +63,13 @@ def _format_progress(event) -> str:
     return f"FAIL for {lead} using {account}: {event.get('message')}"
 
 
-def build_gmass_preview(mode, token_files, auth_mode: str = 'oauth') -> Tuple[str, List[List[str]]]:
+def build_gmass_preview(mode, token_files, auth_mode: str = 'oauth', oauth_accounts=None) -> Tuple[str, List[List[str]]]:
     """Return status text and table rows for the GMass preview panel."""
     if (mode or '').lower() != 'gmass':
         return '', []
 
-    accounts, _ = load_accounts(token_files, auth_mode=auth_mode)
+    combined = merge_token_sources(token_files, oauth_accounts)
+    accounts, _ = load_accounts(combined, auth_mode=auth_mode)
     emails = [account.get('email') for account in accounts if account.get('email')]
 
     if not emails:
@@ -96,6 +99,50 @@ def gmass_rows_to_markdown(rows: List[List[str]]) -> str:
             lines.append(f"- [{safe_account}]({safe_url})")
     return "\n".join(lines)
 
+
+
+
+def merge_token_sources(token_files, oauth_accounts):
+    """Return a combined list of uploaded files and in-memory OAuth credentials."""
+    combined: List[Any] = []
+    if token_files:
+        combined.extend(list(token_files))
+    if oauth_accounts:
+        combined.extend(list(oauth_accounts))
+    return combined
+
+
+def authorize_oauth_client(client_json: str, existing_accounts, auth_mode: str = 'gmail_api'):
+    """Run the OAuth flow and return (status_message, updated_accounts)."""
+    accounts = list(existing_accounts or [])
+    mode = (auth_mode or 'gmail_api').strip().lower()
+    if mode not in {'gmail_api', 'gmail', 'oauth', 'oauth_json', 'oauth-memory'}:
+        return (
+            'Enable the Gmail API credential mode to authorise OAuth credentials.',
+            accounts,
+        )
+
+    if not client_json or not client_json.strip():
+        return ('Paste the Google OAuth client JSON to authorise Gmail + Drive scopes.', accounts)
+
+    try:
+        email, creds = oauth_json.initialize(client_json)
+    except Exception as exc:  # pragma: no cover - network/consent errors
+        return (f'OAuth authorisation failed: {exc}', accounts)
+
+    filtered = [
+        entry for entry in accounts
+        if not (isinstance(entry, dict) and entry.get('__in_memory_oauth__') and entry.get('email') == email)
+    ]
+    filtered.append({
+        '__in_memory_oauth__': True,
+        'email': email,
+        'creds': creds,
+        'auth_type': 'oauth',
+        'label': f'In-memory OAuth ({email})',
+    })
+    message = f'Authorised {email}. Gmail + Drive scopes are now active.'
+    return message, filtered
 
 
 GMAIL_LABEL_URL = "https://gmail.googleapis.com/gmail/v1/users/me/labels/{label_id}"
@@ -137,8 +184,9 @@ def mailbox_rows_to_markdown(rows: List[Tuple[str, int, int]]) -> str:
     return "\n".join(lines)
 
 
-def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth') -> Tuple[str, str]:
-    accounts, token_errors = load_accounts(token_files, auth_mode=auth_mode)
+def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth', oauth_accounts=None) -> Tuple[str, str]:
+    combined = merge_token_sources(token_files, oauth_accounts)
+    accounts, token_errors = load_accounts(combined, auth_mode=auth_mode)
     rows: List[Tuple[str, int, int]] = []
     issues: List[str] = list(token_errors)
 
@@ -211,6 +259,7 @@ def start_manual_campaign(
     advance_header=False,
     force_header=False,
     auth_mode: str = 'oauth',
+    oauth_accounts=None,
 ):
     """Manual mode sender wired to the shared campaign generator."""
     log_lines: List[str] = []
@@ -235,8 +284,10 @@ def start_manual_campaign(
         manual_sender_type=manual_sender_type,
     )
 
+    combined_tokens = merge_token_sources(token_files, oauth_accounts)
+
     events = campaign_events(
-        token_files=token_files,
+        token_files=combined_tokens,
         leads_file=leads_file,
         send_delay_seconds=send_delay_seconds,
         mode=mode,
@@ -393,20 +444,21 @@ def manual_attachment_preview_content(selected_name: str, files, inline_html='',
 def start_campaign(token_files, leads_file, send_delay_seconds, mode,
                    email_content_mode, attachment_folder, invoice_format,
                    support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None,
-                   subject_template=None, body_template=None, auth_mode: str = 'oauth'):
+                   subject_template=None, body_template=None, auth_mode: str = 'oauth', oauth_accounts=None):
     """Generator used by the Gradio UI button to stream campaign events."""
     log_lines: List[str] = []
     status = "Waiting"
     summary = ""
 
-    gmass_status, gmass_rows = build_gmass_preview(mode, token_files, auth_mode=auth_mode)
+    combined_tokens = merge_token_sources(token_files, oauth_accounts)
+    gmass_status, gmass_rows = build_gmass_preview(mode, combined_tokens, auth_mode=auth_mode)
     if gmass_status == "" and gmass_rows:
         # Defensive guard: avoid mismatched state
         gmass_rows = []
     gmass_markdown = gmass_rows_to_markdown(gmass_rows)
 
     events = campaign_events(
-        token_files=token_files,
+        token_files=combined_tokens,
         leads_file=leads_file,
         send_delay_seconds=send_delay_seconds,
         mode=mode,
@@ -525,6 +577,8 @@ def run_unified_campaign(
 
     body_template=None,
 
+    oauth_accounts=None,
+
 ):
 
     selected_mode = (active_ui_mode or 'automatic').strip().lower()
@@ -597,6 +651,8 @@ def run_unified_campaign(
 
             auth_mode,
 
+        oauth_accounts=oauth_accounts,
+
         )
 
         for output in generator:
@@ -639,6 +695,8 @@ def run_unified_campaign(
 
         auth_mode,
 
+        oauth_accounts=oauth_accounts,
+
     )
 
     for output in generator:
@@ -668,6 +726,8 @@ def run_multi_manual_campaign(
     advance_header: bool = False,
 
     force_header: bool = False,
+
+    oauth_accounts=None,
 
 ):
 
@@ -730,6 +790,8 @@ def run_multi_manual_campaign(
             force_header,
 
             auth_mode,
+
+            oauth_accounts=oauth_accounts,
 
         )
 

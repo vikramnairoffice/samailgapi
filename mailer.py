@@ -309,11 +309,38 @@ def load_app_password_files(token_files: Optional[List[Any]]) -> Tuple[List[Dict
     return accounts, errors
 
 
+
 def load_accounts(token_files: Optional[List[Any]], auth_mode: str = 'oauth') -> Tuple[List[Dict[str, Any]], List[str]]:
     mode = (auth_mode or 'oauth').lower()
+    in_memory_accounts: List[Dict[str, Any]] = []
+    file_inputs: List[Any] = []
+    in_memory_errors: List[str] = []
+
+    for entry in token_files or []:
+        if isinstance(entry, dict) and entry.get('__in_memory_oauth__'):
+            email = (entry.get('email') or '').strip()
+            creds = entry.get('creds')
+            label = entry.get('label') or email or 'in-memory credential'
+            if email and creds:
+                in_memory_accounts.append({
+                    'email': email,
+                    'creds': creds,
+                    'path': label,
+                    'auth_type': 'oauth',
+                })
+            else:
+                in_memory_errors.append(f"{label}: in-memory credential is missing required data")
+            continue
+        file_inputs.append(entry)
+
     if mode in {'app_password', 'app-password', 'app password'}:
-        return load_app_password_files(token_files)
-    return load_token_files(token_files)
+        return load_app_password_files(file_inputs)
+
+    accounts, errors = load_token_files(file_inputs)
+    accounts.extend(in_memory_accounts)
+    if in_memory_errors:
+        errors = list(errors) + in_memory_errors
+    return accounts, errors
 
 
 def read_leads_file(leads_file) -> List[str]:

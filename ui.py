@@ -16,6 +16,7 @@ from ui_token_helpers import (
     build_gmass_preview,
     gmass_rows_to_markdown,
     fetch_mailbox_counts,
+    authorize_oauth_client,
     manual_random_sender_name,
     run_unified_campaign,
     run_multi_manual_campaign,
@@ -128,11 +129,16 @@ def _map_subject_template(choice: str):
     mapped = _map_content_template(choice)
     return mapped, mapped
 
-def _gmass_preview_update(mode_value, token_files, auth_mode):
+def _gmass_preview_update(mode_value, token_files, auth_mode, oauth_accounts):
     if (mode_value or '').lower() != 'gmass':
         return gr.update(visible=False), "", ""
 
-    status, rows = build_gmass_preview(mode_value, token_files, auth_mode=auth_mode)
+    status, rows = build_gmass_preview(
+        mode_value,
+        token_files,
+        auth_mode=auth_mode,
+        oauth_accounts=oauth_accounts,
+    )
     markdown = gmass_rows_to_markdown(rows)
     return gr.update(visible=True), status, markdown
 
@@ -473,16 +479,24 @@ def _manual_multi_default_config():
     }
 
 
-def _manual_multi_accounts_from_tokens(token_files):
+def _manual_multi_accounts_from_tokens(token_files, oauth_accounts=None):
     accounts = []
+    seen = set()
     for entry in token_files or []:
         name = getattr(entry, 'orig_name', None) or getattr(entry, 'name', '')
         if not name:
             continue
         base = os.path.splitext(os.path.basename(str(name)))[0]
-        if not base or base in accounts:
+        if not base or base in seen:
             continue
         accounts.append(base)
+        seen.add(base)
+    for entry in oauth_accounts or []:
+        email = (entry.get('email') or '').strip()
+        if not email or email in seen:
+            continue
+        accounts.append(email)
+        seen.add(email)
     return accounts
 
 
@@ -515,8 +529,8 @@ def _manual_multi_store_current(state, account, **kwargs):
     return state
 
 
-def _manual_multi_prepare_accounts(token_files, state):
-    accounts = _manual_multi_accounts_from_tokens(token_files)
+def _manual_multi_prepare_accounts(token_files, state, oauth_accounts=None):
+    accounts = _manual_multi_accounts_from_tokens(token_files, oauth_accounts)
     if not accounts:
         return gr.update(choices=[], value=None, visible=False), {}
     state = state or {}
@@ -524,8 +538,8 @@ def _manual_multi_prepare_accounts(token_files, state):
     return gr.update(choices=accounts, value=accounts[0], visible=True), populated
 
 
-def _manual_multi_sync_accounts(token_files, state):
-    dropdown_update, populated = _manual_multi_prepare_accounts(token_files, state)
+def _manual_multi_sync_accounts(token_files, state, oauth_accounts=None):
+    dropdown_update, populated = _manual_multi_prepare_accounts(token_files, state, oauth_accounts)
     has_accounts = bool(populated)
     message_update = gr.update(visible=not has_accounts)
     tabs_update = gr.update(visible=has_accounts)
@@ -638,7 +652,7 @@ def gradio_ui():
                             ['gmail_api', 'app_password'],
                             value='gmail_api',
                             label='Credential Mode',
-                            info='gmail_api: upload OAuth tokens; app_password: upload TXT lines with email,password'
+                            info='gmail_api: upload token.json files or authorise OAuth (Gmail + Drive); app_password: upload TXT lines with email,password'
                         )
                         token_files = gr.Files(
                             label='Credential Files',
@@ -647,7 +661,7 @@ def gradio_ui():
                         )
                         token_stats = gr.Textbox(
                             label='Credential Status',
-                            value='Upload Gmail credentials to begin.',
+                            value='Upload Gmail tokens or authorise OAuth to begin.',
                             interactive=False,
                             lines=3
                         )
@@ -661,6 +675,27 @@ def gradio_ui():
                             inputs=[token_files, auth_mode],
                             outputs=token_stats,
                         )
+
+                        oauth_accounts_state = gr.State([])
+                        oauth_client_json = gr.Textbox(
+                            label='OAuth Client JSON',
+                            placeholder='Paste the Google OAuth client JSON to launch a live consent flow.',
+                            lines=6,
+                        )
+                        oauth_status = gr.Textbox(
+                            label='OAuth Status',
+                            value='Authorize Gmail + Drive once per session using the JSON above.',
+                            interactive=False,
+                            lines=3,
+                        )
+                        authorize_oauth_btn = gr.Button('Authorize Gmail OAuth')
+                        authorize_oauth_btn.click(
+                            authorize_oauth_client,
+                            inputs=[oauth_client_json, oauth_accounts_state, auth_mode],
+                            outputs=[oauth_status, oauth_accounts_state],
+                        )
+
+
 
                         check_mailboxes_btn = gr.Button(
                             'Check Inbox/Sent Counts',
@@ -677,7 +712,7 @@ def gradio_ui():
                         )
                         check_mailboxes_btn.click(
                             fetch_mailbox_counts,
-                            inputs=[token_files, auth_mode],
+                            inputs=[token_files, auth_mode, oauth_accounts_state],
                             outputs=[mailbox_status, mailbox_preview]
                         )
 
@@ -886,17 +921,17 @@ def gradio_ui():
 
         token_files.change(
             _gmass_preview_update,
-            inputs=[mode, token_files, auth_mode],
+            inputs=[mode, token_files, auth_mode, oauth_accounts_state],
             outputs=[gmass_preview_group, gmass_status, gmass_urls_display],
         )
         auth_mode.change(
             _gmass_preview_update,
-            inputs=[mode, token_files, auth_mode],
+            inputs=[mode, token_files, auth_mode, oauth_accounts_state],
             outputs=[gmass_preview_group, gmass_status, gmass_urls_display],
         )
         mode.change(
             _gmass_preview_update,
-            inputs=[mode, token_files, auth_mode],
+            inputs=[mode, token_files, auth_mode, oauth_accounts_state],
             outputs=[gmass_preview_group, gmass_status, gmass_urls_display],
         )
 
@@ -1000,7 +1035,7 @@ def gradio_ui():
 
         token_files.change(
             _manual_multi_sync_accounts,
-            inputs=[token_files, multi_account_state],
+            inputs=[token_files, multi_account_state, oauth_accounts_state],
             outputs=[multi_account_selector, multi_account_state, multi_notice, multi_tabs],
         )
 
@@ -1088,6 +1123,7 @@ def gradio_ui():
                 content_template_value,
                 subject_template_value,
                 body_template_value,
+                oauth_accounts_state,
             ],
             outputs=[run_output, gmass_status, gmass_urls_display]
         )
@@ -1103,6 +1139,7 @@ def gradio_ui():
                 auth_mode,
                 advance_header,
                 force_header,
+                oauth_accounts_state,
             ],
             outputs=[run_output, gmass_status, gmass_urls_display]
         )

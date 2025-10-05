@@ -76,7 +76,7 @@ Use this board to coordinate parallel sessions. Each task lists its prerequisite
 ## Gate 3 - Credentials Harmonisation
 | ID | Title | Summary | Dependencies | Parallel | Deliverables | Status |
 |----|-------|---------|--------------|---------|--------------|--------|
-| G3-T1 | OAuth In-Memory Flow | Implement credentials/oauth_json adapter + UI integration. | G0-T1, G2-T1 | Sequenced Only | Adapter module, tests, UX copy updates | TODO |
+| G3-T1 | OAuth In-Memory Flow | Implement credentials/oauth_json adapter + UI integration. | G0-T1, G2-T1 | Sequenced Only | Adapter module, tests, UX copy updates | COMPLETE |
 | G3-T2 | Shared Validation Library | Unify credential validation + status messaging across modes. | G3-T1 | Parallel OK | Shared helpers, tests, doc updates | TODO |
 
 ## Gate 4 - Feature Integration Guarding
