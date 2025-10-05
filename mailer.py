@@ -1,4 +1,4 @@
-import base64
+﻿import base64
 import datetime
 import glob
 import os
@@ -9,8 +9,6 @@ import imaplib
 import ssl
 import re
 import time
-from queue import Queue
-from threading import Thread
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email import encoders
@@ -24,14 +22,15 @@ from google.oauth2.credentials import Credentials
 
 from content import (
     SEND_DELAY_SECONDS,
-    PDF_ATTACHMENT_DIR,
-    IMAGE_ATTACHMENT_DIR,
     generate_sender_name,
     content_manager,
 )
 from content_data.content_loader import load_default_gmass_recipients
-from invoice import InvoiceGenerator
+from core import attachments as attachments_adapter
+from core.invoice import InvoiceGenerator
 from manual_mode import ManualConfig
+from core import leads_txt
+from exec.threadpool import ThreadPoolExecutor
 
 GMAIL_PROFILE_URL = "https://gmail.googleapis.com/gmail/v1/users/me/profile"
 GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
@@ -319,16 +318,7 @@ def load_accounts(token_files: Optional[List[Any]], auth_mode: str = 'oauth') ->
 
 def read_leads_file(leads_file) -> List[str]:
     """Read leads from a simple text file."""
-    if not leads_file:
-        return []
-    path = getattr(leads_file, 'name', None) or str(leads_file)
-    leads: List[str] = []
-    with open(path, 'r', encoding='utf-8', errors='ignore') as handle:
-        for line in handle:
-            email = line.strip()
-            if email:
-                leads.append(email)
-    return leads
+    return leads_txt.read(leads_file)
 
 
 def distribute_leads(leads: List[str], account_count: int) -> List[List[str]]:
@@ -355,60 +345,21 @@ def distribute_leads(leads: List[str], account_count: int) -> List[List[str]]:
 
 def choose_random_attachments(include_pdfs: bool, include_images: bool) -> Dict[str, str]:
     """Select random attachments from disk based on the requested formats."""
-    attachments: Dict[str, str] = {}
-
-    if include_pdfs and os.path.exists(PDF_ATTACHMENT_DIR):
-        pdf_files = glob.glob(os.path.join(PDF_ATTACHMENT_DIR, "*.pdf"))
-        if pdf_files:
-            pdf_path = random.choice(pdf_files)
-            attachments[os.path.basename(pdf_path)] = pdf_path
-
-    if include_images and os.path.exists(IMAGE_ATTACHMENT_DIR):
-        image_files = glob.glob(os.path.join(IMAGE_ATTACHMENT_DIR, "*.jpg"))
-        image_files += glob.glob(os.path.join(IMAGE_ATTACHMENT_DIR, "*.png"))
-        if image_files:
-            image_path = random.choice(image_files)
-            attachments[os.path.basename(image_path)] = image_path
-
-    return attachments
+    return attachments_adapter.choose_static(include_pdfs, include_images)
 
 
 def choose_random_file_from_folder(folder_path: str) -> Dict[str, str]:
     """Select a random file from the provided folder regardless of extension."""
-    folder = os.path.abspath(os.path.expanduser(folder_path))
-    if not os.path.exists(folder):
-        raise RuntimeError(f"Attachment folder not found: {folder}")
-    if not os.path.isdir(folder):
-        raise RuntimeError(f"Attachment folder is not a directory: {folder}")
-
-    try:
-        files = [entry.path for entry in os.scandir(folder) if entry.is_file()]
-    except Exception as exc:
-        raise RuntimeError(f"Failed to read attachment folder: {exc}") from exc
-
-    if not files:
-        raise RuntimeError(f"No files available in attachment folder: {folder}")
-
-    chosen_path = random.choice(files)
-    return {os.path.basename(chosen_path): chosen_path}
+    return attachments_adapter.choose_from_folder(folder_path)
 
 
 def build_attachments(config: Dict[str, Any], invoice_gen: InvoiceGenerator, lead_email: str) -> Dict[str, str]:
     """Build attachment mapping for the current email."""
-    mode = (config.get('email_content_mode') or 'Attachment').lower()
-    if mode == 'attachment':
-        folder_override = (config.get('attachment_folder') or '').strip()
-        if folder_override:
-            return choose_random_file_from_folder(folder_override)
-        fmt = (config.get('attachment_format') or 'pdf').lower()
-        include_pdfs = fmt == 'pdf'
-        include_images = fmt == 'image'
-        return choose_random_attachments(include_pdfs, include_images)
-
-    invoice_format = (config.get('invoice_format') or 'pdf').lower()
-    support_number = config.get('support_number') or ''
-    invoice_path = invoice_gen.generate_for_recipient(lead_email, support_number, invoice_format)
-    return {os.path.basename(invoice_path): invoice_path}
+    return attachments_adapter.build(
+        config,
+        lead_email,
+        invoice_factory=lambda: invoice_gen,
+    )
 
 
 def compose_email(account_email: str, config: Dict[str, Any]) -> Tuple[str, str, str]:
@@ -477,6 +428,8 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
 
 
 
+
+
 def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], config: Dict[str, Any], send_delay_seconds: float) -> Iterable[Dict[str, Any]]:
     """Send emails per account concurrently and yield their progress."""
     account_count = len(accounts)
@@ -492,49 +445,32 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], co
     else:
         assignments = distribute_leads(leads, account_count)
 
-    result_queue: Queue = Queue()
-    sentinel = object()
-    threads: List[Thread] = []
-    invoice_factory = InvoiceGenerator
-
-    def worker(account: Dict[str, Any], account_leads: List[str]) -> None:
-        try:
-            invoice_gen = invoice_factory()
-            for lead_email in account_leads:
-                try:
-                    success, message = send_single_email(account, lead_email, config, invoice_gen)
-                except Exception as exc:  # pragma: no cover - defensive guard
-                    success, message = False, str(exc)
-                result_queue.put({
-                    'account': account['email'],
-                    'lead': lead_email,
-                    'success': success,
-                    'message': message,
-                })
-                if delay_seconds > 0:
-                    time.sleep(delay_seconds)
-        finally:
-            result_queue.put(sentinel)
-
-    for account, account_leads in zip(accounts, assignments):
-        thread = Thread(target=worker, args=(account, account_leads), daemon=True)
-        thread.start()
-        threads.append(thread)
-
-    if not threads:
+    workers = list(zip(accounts, assignments))
+    if not workers:
         return
 
-    active_workers = len(threads)
-    try:
-        while active_workers:
-            item = result_queue.get()
-            if item is sentinel:
-                active_workers -= 1
-                continue
-            yield item
-    finally:
-        for thread in threads:
-            thread.join()
+    executor = ThreadPoolExecutor(max_workers=account_count, thread_name_prefix='MailerWorker')
+    invoice_factory = InvoiceGenerator
+
+    def _worker(payload: Tuple[Dict[str, Any], List[str]]) -> Iterable[Dict[str, Any]]:
+        account, account_leads = payload
+        invoice_gen = invoice_factory()
+        for lead_email in account_leads:
+            try:
+                success, message = send_single_email(account, lead_email, config, invoice_gen)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                success, message = False, str(exc)
+            yield {
+                'account': account['email'],
+                'lead': lead_email,
+                'success': success,
+                'message': message,
+            }
+            if delay_seconds > 0:
+                time.sleep(delay_seconds)
+
+    yield from executor.stream(workers, _worker)
+
 
 def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_seconds: float, mode: str,
                     content_template: Optional[str] = None, subject_template: Optional[str] = None,
@@ -606,4 +542,6 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_sec
         'kind': 'done',
         'message': f"Completed {total_attempts} send attempt(s) with {successes} success(es).",
     }
+
+
 

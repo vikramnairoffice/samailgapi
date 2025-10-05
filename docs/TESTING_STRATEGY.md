@@ -8,12 +8,14 @@ Principles
 ## Unit Tests
 
 - core/leads_csv: parses header email,fname,lname, handles missing/blank values  empty strings, matches legacy parser fixtures.
-- core/spintax: renders CSV/TXT data into {{FNAME}}/{{LNAME}}, pipes UI TFN input, pulls {{LOGO}} from remote list and {{Product}} from product bundles (mocked RNG), then applies spintax identical to legacy.
+- core/spintax: adapter tests assert tag context overrides, injected RNG control, and the combined render+spintax helper stay aligned with legacy outputs.
 - core/attachments: chooses static vs invoice using manual_mode adapter; validates conversion matrix (PDF/PNG/HEIF/DOCX).
 - credentials/*: token/app password/OAuth loaders share validation tests to guarantee identical error messaging.
 - OAuth fixtures assert shared Gmail+Drive scope availability so adapters never request duplicate consent.
 - senders/gmail_rest: builds MIME with headers/attachments; parity fixtures compare generated payloads with legacy outputs.
+- senders/gmail_smtp: guards required credentials, normalises headers, and wraps legacy SMTP send + mailbox metrics errors for actionable messages.
 - orchestrator/modes: ensures adapters pass through configuration without mutation.
+- orchestrator/ui_shell: feature flag guard keeps legacy layout default until the new shell is ready.
 - `tests/test_mailer_parity.py`: locks Gmail send headers, compose fallbacks, invoice attachments, and delay handling with mocked network and filesystem boundaries.
 
 ## Integration Tests

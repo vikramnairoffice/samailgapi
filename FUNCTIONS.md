@@ -37,7 +37,7 @@ Each module lists public functions (no leading underscore), the helper/internal 
 **ui_token_helpers.py**
 - Classes: none exposed.
 - Public functions: analyze_token_files, ui_error_wrapper, build_gmass_preview, gmass_rows_to_markdown, mailbox_rows_to_markdown, fetch_mailbox_counts, start_manual_campaign, build_manual_config_from_inputs, manual_preview_snapshot, manual_random_sender_name, manual_attachment_listing, manual_attachment_preview_content, start_campaign, run_unified_campaign, run_multi_manual_campaign.
-- Internal helpers: _build_output, _format_progress, _fetch_label_total, _extract_update_value, _resolve_manual_body_image_choice, _wrap_text_as_html, _wrap_preview_container, _wrap_preview_error.
+- Internal helpers: _build_output, _format_progress, _fetch_label_total, _extract_update_value, _resolve_manual_body_image_choice.
 
 **gardio_ui.py**
 - Classes: Section, LayoutSpec.
@@ -53,3 +53,9 @@ Each module lists public functions (no leading underscore), the helper/internal 
 - Classes: none exposed.
 - Public functions: install_packages, create_directories, launch_app.
 - Internal helpers: _load_requirements.
+
+
+**manual.manual_preview_adapter.py**
+- Classes: none exposed.
+- Public functions: build_snapshot, attachment_listing, attachment_preview.
+- Internal helpers: none.

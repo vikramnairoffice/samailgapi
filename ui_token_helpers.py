@@ -9,7 +9,13 @@ from urllib.parse import quote
 
 from mailer import campaign_events, update_file_stats, load_accounts, fetch_mailbox_totals_app_password
 from content import generate_sender_name
-from manual_mode import ManualConfig, parse_extra_tags, to_attachment_specs, preview_attachment
+from manual_mode import ManualConfig, parse_extra_tags, to_attachment_specs
+from manual.manual_preview_adapter import (
+    build_snapshot as manual_build_snapshot,
+    attachment_listing as manual_attachment_listing_adapter,
+    attachment_preview as manual_attachment_preview_adapter,
+)
+
 
 
 def analyze_token_files(token_files, auth_mode: str = 'oauth') -> str:
@@ -323,26 +329,6 @@ def build_manual_config_from_inputs(
 
 
 
-def _wrap_text_as_html(text: str) -> str:
-    return f"<pre style='white-space:pre-wrap; margin:0;'>{_html_module.escape(text or '')}</pre>"
-
-
-def _wrap_preview_container(title: str, inner_html: str) -> str:
-    header = f"<div style='font-weight:600; margin-bottom:8px;'>{_html_module.escape(title)}</div>" if title else ''
-    body = inner_html or ''
-    return (
-        '<div style="max-height:600px; overflow:auto; padding:12px; '
-        'border:1px solid rgba(255,255,255,0.15); border-radius:8px; ' 
-        'background:rgba(0,0,0,0.25);">'
-        f'{header}{body}</div>'
-    )
-
-
-def _wrap_preview_error(title: str, message: str) -> str:
-    body = f"<div style='color:#ff9f9f'>{_html_module.escape(message or 'Preview not available.')}</div>"
-    return _wrap_preview_container(title, body)
-
-
 def manual_preview_snapshot(
     *,
     manual_body,
@@ -376,71 +362,12 @@ def manual_preview_snapshot(
         manual_sender_type='business',
     )
 
-    context = config.build_context(_PREVIEW_EMAIL)
-    html_map = {}
-    choices = []
+    return manual_build_snapshot(
+        config,
+        preview_email=_PREVIEW_EMAIL,
+        selected_attachment_name=selected_attachment_name,
+    )
 
-    body_available = False
-    attachment_available = False
-
-    try:
-        body_rendered, body_kind = config.render_body(context)
-    except Exception as exc:  # pragma: no cover - defensive
-        fragment = _wrap_preview_error('Body Preview', str(exc))
-        html_map['Body'] = fragment
-        choices.append('Body')
-    else:
-        if body_rendered:
-            if body_kind == 'html':
-                fragment = body_rendered
-            else:
-                fragment = _wrap_text_as_html(body_rendered)
-            html_map['Body'] = _wrap_preview_container('Body Preview', fragment)
-            choices.append('Body')
-            body_available = True
-        else:
-            html_map['Body'] = _wrap_preview_error('Body Preview', 'No body content available.')
-            choices.append('Body')
-
-    attachments = config.attachments if config.attachments_enabled else []
-    if attachments:
-        target = None
-        if selected_attachment_name:
-            for spec in attachments:
-                if spec.display_name == selected_attachment_name:
-                    target = spec
-                    break
-        if target is None:
-            target = attachments[0]
-        try:
-            kind, payload = preview_attachment(target)
-        except Exception as exc:  # pragma: no cover - defensive
-            fragment = _wrap_preview_error('Attachment Preview', str(exc))
-        else:
-            if kind == 'html':
-                inner = payload
-            else:
-                inner = _wrap_text_as_html(payload)
-            fragment = _wrap_preview_container(
-                f"Attachment Preview ({target.display_name})",
-                inner,
-            )
-            attachment_available = True
-        html_map['Attachment'] = fragment
-        choices.append('Attachment')
-
-    if not choices:
-        html_map['Body'] = _wrap_preview_error('Preview', 'Nothing to preview yet.')
-        choices.append('Body')
-
-    default = 'Body' if 'Body' in choices else choices[0]
-    if default == 'Body' and not body_available and 'Attachment' in choices and attachment_available:
-        default = 'Attachment'
-    meta = {
-        'body_available': body_available,
-        'attachment_available': attachment_available,
-    }
-    return choices, default, html_map, meta
 
 
 def manual_random_sender_name(sender_type: str = 'business') -> str:
@@ -450,35 +377,16 @@ def manual_random_sender_name(sender_type: str = 'business') -> str:
 def manual_attachment_listing(files, inline_html='', inline_name=''):
     """Return dropdown choices and initial preview for manual attachments."""
     specs = to_attachment_specs(files, inline_html, inline_name)
-    names = [spec.display_name for spec in specs]
-    if specs:
-        kind, payload = preview_attachment(specs[0])
-        if kind == 'html':
-            html_payload, text_payload = payload, ''
-        else:
-            html_payload, text_payload = '', payload
-        default = names[0]
-    else:
-        html_payload = ''
-        text_payload = ''
-        default = None
-    return names, default, html_payload, text_payload
+    return manual_attachment_listing_adapter(specs)
+
 
 
 def manual_attachment_preview_content(selected_name: str, files, inline_html='', inline_name=''):
     """Return HTML/text preview content for the selected manual attachment."""
     specs = to_attachment_specs(files, inline_html, inline_name)
-    target = None
-    for spec in specs:
-        if spec.display_name == selected_name:
-            target = spec
-            break
-    if target is None:
-        return '', ''
-    kind, payload = preview_attachment(target)
-    if kind == 'html':
-        return payload, ''
-    return '', payload
+    html_payload, text_payload = manual_attachment_preview_adapter(specs, selected_name)
+    return html_payload, text_payload
+
 
 
 @ui_error_wrapper(extra_outputs=("", ""))

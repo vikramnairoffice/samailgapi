@@ -1,0 +1,164 @@
+{
+  "components": [
+    {
+      "type": "Accordion",
+      "label": "GMass Deliverability Preview",
+      "elem_id": null
+    },
+    {
+      "type": "Checkbox",
+      "label": "Attach Inline PNG",
+      "elem_id": null
+    },
+    {
+      "type": "Checkbox",
+      "label": "Randomize HTML Styling",
+      "elem_id": null
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "automatic-html-config"
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "automatic-html-preview"
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "automatic-invoice-config"
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "automatic-invoice-preview"
+    },
+    {
+      "type": "File",
+      "label": "HTML Upload",
+      "elem_id": null
+    },
+    {
+      "type": "Group",
+      "label": null,
+      "elem_id": "automatic-mode-root"
+    },
+    {
+      "type": "HTML",
+      "label": "HTML Preview",
+      "elem_id": null
+    },
+    {
+      "type": "HTML",
+      "label": "Preview Output",
+      "elem_id": null
+    },
+    {
+      "type": "Markdown",
+      "label": "GMass Deliverability URLs",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Attachment Conversion",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Body Template",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Document Format",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Email Content",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "HTML Body Template",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "HTML Sender Name Style",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "HTML Subject Template",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Image Format",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Invoice Format",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Mode Selection",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Sender Name Style",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Subject Template",
+      "elem_id": null
+    },
+    {
+      "type": "Tab",
+      "label": "HTML",
+      "elem_id": null
+    },
+    {
+      "type": "Tab",
+      "label": "Invoice",
+      "elem_id": null
+    },
+    {
+      "type": "Tabs",
+      "label": null,
+      "elem_id": "automatic-mode-tabs"
+    },
+    {
+      "type": "Textbox",
+      "label": "Attachment Folder",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "GMass Status",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Inline HTML Override",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Support Number",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "TFN Number",
+      "elem_id": null
+    }
+  ]
+}

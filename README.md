@@ -80,6 +80,9 @@ setup.py            # Packaging configuration
 - Use the console script after installation: `simple-mailer`.
 - Keep runtime assets (logos, prebuilt attachments, tokens) out of version control; they are covered in `.gitignore`.
 
+## Feature flags
+- `LEGACY_UI_SHELL` defaults to `1` to keep the legacy Gradio layout. Set it to `0` to load the in-progress orchestrator scaffold.
+
 ## License
 MIT - for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.
 

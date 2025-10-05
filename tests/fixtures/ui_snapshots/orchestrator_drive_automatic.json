@@ -1,0 +1,84 @@
+{
+  "components": [
+    {
+      "type": "Checkbox",
+      "label": "Randomize HTML Styling",
+      "elem_id": null
+    },
+    {
+      "type": "Checkbox",
+      "label": "Send Notification Email",
+      "elem_id": null
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "drive-automatic-config"
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "drive-automatic-preview"
+    },
+    {
+      "type": "Dropdown",
+      "label": "Asset Conversion",
+      "elem_id": null
+    },
+    {
+      "type": "Dropdown",
+      "label": "Asset Selection",
+      "elem_id": null
+    },
+    {
+      "type": "Dropdown",
+      "label": "Template Choice",
+      "elem_id": null
+    },
+    {
+      "type": "Files",
+      "label": "Drive Assets",
+      "elem_id": null
+    },
+    {
+      "type": "Files",
+      "label": "HTML Upload",
+      "elem_id": null
+    },
+    {
+      "type": "Group",
+      "label": null,
+      "elem_id": "drive-automatic-root"
+    },
+    {
+      "type": "HTML",
+      "label": "Asset Preview",
+      "elem_id": null
+    },
+    {
+      "type": "HTML",
+      "label": "Message Preview",
+      "elem_id": null
+    },
+    {
+      "type": "Number",
+      "label": "Delay (seconds)",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Custom HTML",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Run Log",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "TFN Number",
+      "elem_id": null
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "components": [
+    {
+      "type": "Dropdown",
+      "label": "Account",
+      "elem_id": "multi-account-dropdown"
+    },
+    {
+      "type": "Markdown",
+      "label": null,
+      "elem_id": "multi-account-notice"
+    },
+    {
+      "type": "Markdown",
+      "label": null,
+      "elem_id": "multi-active-account"
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "multi-mode-tabs"
+    },
+    {
+      "type": "Files",
+      "label": "Account Tokens",
+      "elem_id": "multi-token-files"
+    }
+  ]
+}

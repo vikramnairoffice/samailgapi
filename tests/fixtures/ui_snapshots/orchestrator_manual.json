@@ -1,0 +1,109 @@
+{
+  "components": [
+    {
+      "type": "Checkbox",
+      "label": "Body Uses HTML",
+      "elem_id": null
+    },
+    {
+      "type": "Checkbox",
+      "label": "Change Name Every Send",
+      "elem_id": null
+    },
+    {
+      "type": "Checkbox",
+      "label": "Include Attachment",
+      "elem_id": null
+    },
+    {
+      "type": "Checkbox",
+      "label": "Randomize HTML Styling",
+      "elem_id": null
+    },
+    {
+      "type": "Checkbox",
+      "label": "Render HTML Body as Image",
+      "elem_id": null
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "manual-config-panel"
+    },
+    {
+      "type": "Column",
+      "label": null,
+      "elem_id": "manual-preview-panel"
+    },
+    {
+      "type": "Dataframe",
+      "label": "Additional Tags",
+      "elem_id": null
+    },
+    {
+      "type": "Dropdown",
+      "label": "Attachment Mode",
+      "elem_id": null
+    },
+    {
+      "type": "Dropdown",
+      "label": "Attachment Selection",
+      "elem_id": null
+    },
+    {
+      "type": "Files",
+      "label": "Attachment Files",
+      "elem_id": null
+    },
+    {
+      "type": "Group",
+      "label": null,
+      "elem_id": "manual-mode-root"
+    },
+    {
+      "type": "HTML",
+      "label": "Preview",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Preview Source",
+      "elem_id": null
+    },
+    {
+      "type": "Radio",
+      "label": "Sender Name Style",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Body",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Inline Attachment HTML",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Inline Attachment Name",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Sender Name",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "Subject",
+      "elem_id": null
+    },
+    {
+      "type": "Textbox",
+      "label": "TFN Number",
+      "elem_id": null
+    }
+  ]
+}

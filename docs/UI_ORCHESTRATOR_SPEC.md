@@ -32,7 +32,7 @@ Available modes
 - `email_automatic_invoice`: retains delay, GMass vs Leads selector, automatic/manual switch, template chips (`Own Proven`, `Own Last`, `R1_Tags`), sender style buttons, attachment vs invoice toggle with explicit format buttons (PDF/DOCX/PNG/HEIF), GMass preview, and run log output just like legacy automatic mode.
 - `email_automatic_html`: extends the automatic card with TFN input, HTML body upload, randomizer + inline PNG checkboxes, attachment conversion (`Doc`/`Image`, downstream format buttons), and an HTML attachment upload tray so the same manual bulk helpers remain in play.
 - `email_manual`: keeps sender style controls, change-name toggle, subject/body editors with tag guidance, extra tag repeater, attachment conversion area, TFN input, and the dedicated preview panel (`Body` vs `Attachment`).
-- `multi_mode`: account dropdown plus mode selector; once an account is chosen it embeds the full manual or automatic workspace so per-account overrides can reuse the same components.
+- `multi_mode`: account dropdown plus mode selector; once an account is chosen it embeds the email manual/automatic and drive manual/automatic workspaces so per-account overrides reuse the same components.
 - `drive_share_manual`: delay control, TFN input, custom message textbox with tag support, notification toggle, conversion buttons (PDF/HTML), and run log all forwarding to current Drive manual helpers.
 - `drive_share_automatic`: shares the manual layout but swaps the message textbox for template chips and HTML upload drop zone so existing automatic Drive routines plug in unchanged.
 
