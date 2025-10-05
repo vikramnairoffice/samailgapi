@@ -64,3 +64,8 @@ How do we know all dependencies are installed and working in configuration depen
 
 HTML Table format can be implimented as as Table 
 Tax spintax already exist just change the data on those 
+
+Multi agent development Stratergy
+Human testing or Script testing with each changes 
+Reusing Code instead of rewrite for true refactor 
+Gardio race feature desabled 
