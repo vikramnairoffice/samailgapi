@@ -188,3 +188,15 @@ def test_gmass_preview_widgets_within_preview_tab():
     labels = _collect_parent_labels(gmass_status)
     assert 'Automated Mode' in labels
     assert 'Preview' in labels
+
+
+def test_automatic_mode_invoice_format_choices():
+    demo = ui.gradio_ui()
+    invoice_format_radio = next(
+        comp for comp in demo.blocks.values() if getattr(comp, 'label', None) == 'Invoice Format'
+    )
+    choice_values = [
+        option[0] if isinstance(option, tuple) else option
+        for option in invoice_format_radio.choices
+    ]
+    assert choice_values == ["pdf", "png", "heif"]
