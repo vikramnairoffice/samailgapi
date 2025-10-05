@@ -748,9 +748,10 @@ def gradio_ui():
                                 placeholder="Optional path to attachments"
                             )
                             invoice_format = gr.Radio(
-                                ["pdf", "docx"],
+                                ["pdf", "png", "heif"],
                                 value="pdf",
-                                label="Invoice Format"
+                                label="Invoice Format",
+                                info="Generate invoices as PDF (default) or auto-convert to PNG/HEIF."
                             )
 
                         support_number = gr.Textbox(
