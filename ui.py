@@ -26,6 +26,28 @@ _MANUAL_DOC_OPTIONS = ["PDF", "Flat PDF", "Docx"]
 _MANUAL_IMAGE_OPTIONS = ["PNG", "HEIF"]
 _MANUAL_CATEGORY_OPTIONS = ["Doc", "Image", "Keep Original"]
 
+_INLINE_EMAIL_MODE = "Inline Invoice"
+
+
+def _is_inline_email_mode(value: str) -> bool:
+    return (value or "").strip().lower() == _INLINE_EMAIL_MODE.lower()
+
+
+def _automatic_email_content_change(mode_choice, include_body_text):
+    inline_selected = _is_inline_email_mode(mode_choice)
+    include_body = bool(include_body_text)
+    attachment_update = gr.update(visible=not inline_selected)
+    invoice_update = gr.update(visible=not inline_selected)
+    toggle_update = gr.update(visible=inline_selected)
+    body_interactive = (not inline_selected) or include_body
+    body_update = gr.update(interactive=body_interactive)
+    return attachment_update, invoice_update, toggle_update, body_update
+
+
+def _inline_body_toggle_change(include_body_text):
+    return gr.update(interactive=bool(include_body_text))
+
+
 def _extract_update_value(value):
     if isinstance(value, dict) and value.get('__type__') == 'update':
         return value.get('value')
@@ -704,7 +726,7 @@ def gradio_ui():
                 active_ui_mode = gr.State('automatic')
 
                 with gr.Tabs(elem_id='mode-tabs') as mode_tabs:
-                    with gr.TabItem('Automatic', id='mode_automatic') as automatic_tab:
+                    with gr.TabItem('Automated Mode', id='mode_automatic') as automatic_tab:
                         subject_template_choice = gr.Radio(
                             ["own_proven", "Own_last", "R1_Tag"],
                             value="own_proven",
@@ -718,16 +740,29 @@ def gradio_ui():
                             outputs=[subject_template_value, content_template_value]
                         )
 
-                        body_template_choice = gr.Radio(
-                            ["own_proven", "Own_last", "R1_Tag"],
-                            value="own_proven",
-                            label="Body Template"
-                        )
+                        with gr.Row(equal_height=True):
+                            body_template_choice = gr.Radio(
+                                ["own_proven", "Own_last", "R1_Tag"],
+                                value="own_proven",
+                                label="Body Template"
+                            )
+                            inline_body_toggle = gr.Checkbox(
+                                label="Include Body Text",
+                                value=True,
+                                visible=False,
+                                info="When disabled, send only the inline invoice without the canned body.",
+                            )
                         body_template_value = gr.State("own_proven")
                         body_template_choice.change(
                             _map_content_template,
                             inputs=body_template_choice,
                             outputs=body_template_value
+                        )
+
+                        inline_body_toggle.change(
+                            _inline_body_toggle_change,
+                            inputs=inline_body_toggle,
+                            outputs=body_template_choice,
                         )
 
                         sender_name_type = gr.Radio(
@@ -737,7 +772,7 @@ def gradio_ui():
                         )
 
                         email_content_mode = gr.Radio(
-                            ["Attachment", "Invoice"],
+                            ["Attachment", "Invoice", _INLINE_EMAIL_MODE],
                             value="Attachment",
                             label="Email Content"
                         )
@@ -753,6 +788,12 @@ def gradio_ui():
                                 label="Invoice Format",
                                 info="Generate invoices as PDF (default) or auto-convert to PNG/HEIF."
                             )
+
+                        email_content_mode.change(
+                            _automatic_email_content_change,
+                            inputs=[email_content_mode, inline_body_toggle],
+                            outputs=[attachment_folder, invoice_format, inline_body_toggle, body_template_choice],
+                        )
 
                         support_number = gr.Textbox(
                             label="Support Numbers (one per line)",
@@ -1062,6 +1103,7 @@ def gradio_ui():
                 send_delay_seconds,
                 mode,
                 email_content_mode,
+                inline_body_toggle,
                 attachment_folder,
                 invoice_format,
                 support_number,

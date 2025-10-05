@@ -238,6 +238,7 @@ def start_manual_campaign(
         subject_template='own_proven',
         body_template='own_proven',
         email_content_mode='Attachment',
+        inline_body_enabled=True,
         attachment_format='pdf',
         invoice_format='pdf',
         support_number='',
@@ -483,7 +484,7 @@ def manual_attachment_preview_content(selected_name: str, files, inline_html='',
 
 @ui_error_wrapper(extra_outputs=("", ""))
 def start_campaign(token_files, leads_file, send_delay_seconds, mode,
-                   email_content_mode, attachment_folder, invoice_format,
+                   email_content_mode, inline_body_enabled, attachment_folder, invoice_format,
                    support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None,
                    subject_template=None, body_template=None, auth_mode: str = 'oauth'):
     """Generator used by the Gradio UI button to stream campaign events."""
@@ -506,6 +507,7 @@ def start_campaign(token_files, leads_file, send_delay_seconds, mode,
         subject_template=subject_template,
         body_template=body_template,
         email_content_mode=email_content_mode,
+        inline_body_enabled=inline_body_enabled,
         attachment_format='pdf',
         invoice_format=invoice_format,
         support_number=support_number,
@@ -564,6 +566,8 @@ def run_unified_campaign(
     mode,
 
     email_content_mode,
+
+    inline_body_enabled,
 
     attachment_folder,
 
@@ -710,6 +714,8 @@ def run_unified_campaign(
         mode,
 
         email_content_mode,
+
+        inline_body_enabled,
 
         attachment_folder,
 

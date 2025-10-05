@@ -1,6 +1,7 @@
 import base64
 import datetime
 import glob
+import html
 import os
 import random
 import smtplib
@@ -47,8 +48,49 @@ _EXTRA_MIME_TYPES = {
     '.heic': 'image/heif',
     '.heif': 'image/heif',
 }
+    
+
+def _body_text_to_html(body: str) -> str:
+    if not body:
+        return ""
+    stripped = body.strip()
+    if stripped.startswith("<") and stripped.endswith(">"):
+        return stripped
+    escaped = html.escape(body)
+    paragraphs = [segment for segment in escaped.split("\n\n") if segment.strip()]
+    if not paragraphs:
+        paragraphs = [escaped]
+    html_parts: List[str] = []
+    for paragraph in paragraphs:
+        normalized = paragraph.replace("\n", "<br />")
+        html_parts.append(f"<p>{normalized}</p>")
+    return "".join(html_parts)
 
 
+def _build_inline_invoice_html(invoice_path: str) -> str:
+    if not invoice_path or not os.path.exists(invoice_path):
+        raise RuntimeError("Inline invoice rendering failed: image file not created.")
+    try:
+        with open(invoice_path, 'rb') as handle:
+            payload = base64.b64encode(handle.read()).decode('ascii')
+    except OSError as exc:
+        raise RuntimeError(f"Unable to read inline invoice: {exc}") from exc
+    return (
+        "<div style=\"margin:16px 0;text-align:center;\">"
+        f"<img src=\"data:image/png;base64,{payload}\" alt=\"Invoice\" "
+        "style=\"max-width:100%;height:auto;\" />"
+        "</div>"
+    )
+
+
+def _merge_inline_invoice(body_text: str, invoice_html: str, include_body_text: bool) -> str:
+    fragments: List[str] = []
+    if include_body_text:
+        body_fragment = _body_text_to_html(body_text)
+        if body_fragment:
+            fragments.append(body_fragment)
+    fragments.append(invoice_html)
+    return "".join(fragment for fragment in fragments if fragment)
 
 
 def update_file_stats(token_files, leads_file, auth_mode: str = 'oauth'):
@@ -396,6 +438,8 @@ def choose_random_file_from_folder(folder_path: str) -> Dict[str, str]:
 def build_attachments(config: Dict[str, Any], invoice_gen: InvoiceGenerator, lead_email: str) -> Dict[str, str]:
     """Build attachment mapping for the current email."""
     mode = (config.get('email_content_mode') or 'Attachment').lower()
+    if mode == 'inline invoice':
+        return {}
     if mode == 'attachment':
         folder_override = (config.get('attachment_folder') or '').strip()
         if folder_override:
@@ -440,7 +484,20 @@ def send_single_email(account: Dict[str, Any], lead_email: str, config: Dict[str
         from_header = f"{sender_name} <{account['email']}>"
     else:
         subject, body, from_header = compose_email(account['email'], config)
-        attachments = build_attachments(config, invoice_gen, lead_email)
+        content_mode = (config.get('email_content_mode') or 'Attachment').strip().lower()
+        include_body_text = bool(config.get('inline_body_enabled', True))
+        if content_mode == 'inline invoice':
+            invoice_path = invoice_gen.generate_for_recipient(
+                lead_email,
+                config.get('support_number') or '',
+                'png',
+            )
+            invoice_html = _build_inline_invoice_html(invoice_path)
+            body = _merge_inline_invoice(body, invoice_html, include_body_text)
+            body_subtype = 'html'
+            attachments = {}
+        else:
+            attachments = build_attachments(config, invoice_gen, lead_email)
 
     try:
         advance_flag = bool(config.get('advance_header'))
@@ -538,7 +595,7 @@ def run_campaign(accounts: List[Dict[str, Any]], mode: str, leads: List[str], co
 
 def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_seconds: float, mode: str,
                     content_template: Optional[str] = None, subject_template: Optional[str] = None,
-                    body_template: Optional[str] = None, email_content_mode: str = "Attachment", attachment_format: str = "pdf",
+                    body_template: Optional[str] = None, email_content_mode: str = "Attachment", inline_body_enabled: bool = True, attachment_format: str = "pdf",
                     invoice_format: str = "pdf", support_number: str = "", sender_name_type: str = "",
                     attachment_folder: str = "", advance_header: bool = False, force_header: bool = False,
                     auth_mode: str = "oauth", manual_config: Optional[ManualConfig] = None) -> Iterable[Dict[str, Any]]:
@@ -571,6 +628,7 @@ def campaign_events(token_files: Optional[List[Any]], leads_file, send_delay_sec
         'subject_template': subject_choice,
         'body_template': body_choice,
         'email_content_mode': email_content_mode,
+        'inline_body_enabled': bool(inline_body_enabled),
         'attachment_format': attachment_format,
         'attachment_folder': attachment_folder,
         'invoice_format': invoice_format,
