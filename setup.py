@@ -49,6 +49,7 @@ setup(
         'content',
         'ui_token_helpers',
         'colab_setup',
+        'manual_mode',
     ],
     package_data={
         'content_data': [
