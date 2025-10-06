@@ -1,5 +1,5 @@
 from pathlib import Path
-from setuptools import setup
+from setuptools import find_packages, setup
 
 ROOT = Path(__file__).parent
 
@@ -41,6 +41,7 @@ setup(
     long_description=read_readme(),
     long_description_content_type='text/markdown',
     url='https://github.com/vikramnairoffice/simple-gmail-rest-mailer',
+    packages=find_packages(include=['content_data', 'content_data.*']),
     py_modules=[
         'ui',
         'mailer',
@@ -49,6 +50,18 @@ setup(
         'ui_token_helpers',
         'colab_setup',
     ],
+    package_data={
+        'content_data': [
+            '*.txt',
+            '*.json',
+            'email/*.txt',
+            'email/*.json',
+            'email/body_parts/*.txt',
+            'invoice/*.txt',
+            'invoice/*.json',
+        ],
+    },
+    include_package_data=True,
     install_requires=parse_requirements(),
     extras_require={
         'dev': [
@@ -79,8 +92,6 @@ setup(
         'Topic :: Office/Business :: Financial :: Accounting',
     ],
     python_requires='>=3.7',
-    include_package_data=True,
-    package_data={'': ['*.md', '*.txt', '*.json']},
     entry_points={'console_scripts': ['simple-mailer=ui:main']},
     project_urls={
         'Bug Reports': 'https://github.com/vikramnairoffice/simple-gmail-rest-mailer/issues',
