@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from core import attachments
-from core import invoice as invoice_adapter
+from simple_mailer.core import attachments
+from simple_mailer.core import invoice as invoice_adapter
 
 
 def _write_sample(directory: Path, name: str) -> Path:

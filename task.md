@@ -31,6 +31,16 @@ Use this board to coordinate parallel sessions. Each task lists its prerequisite
 | G2-T3 | Codex | COMPLETE | Automatic modes orchestrator + tests + snapshot |
 | G2-T4 | Codex | COMPLETE | Drive modes orchestrator + tests + snapshots |
 | G2-T5 | Codex | COMPLETE | Multi mode orchestrator + tests + doc note |
+| G4-T1 | Codex | COMPLETE | Parity suite run, runbook + Known_Issues updated |
+| G6-T1 | Codex | COMPLETE | Legacy UI flag retired; docs updated |
+| G6-T2 | Codex | COMPLETE | Blueprint audit report + doc sweep |
+| G7-T1 | Codex | COMPLETE | Package skeleton migration finished |
+| G7-T2 | Codex | COMPLETE | Legacy adapter bridge wired; orchestrator now routed |
+| G7-T3 | Codex | COMPLETE | Feature flag routes entry to orchestrator ui_shell; docs/tests updated |
+| G7-T4 | Codex | COMPLETE | Core html renderer/randomizer + header & throttling helpers relocated |
+| G7-T5 | Codex | COMPLETE | Credential adapters consolidated; tests added |
+| G7-T6 | Codex | COMPLETE | Legacy adapters removed; docs/tests refreshed after parity run |
+
 
 
 ---
@@ -82,7 +92,7 @@ Use this board to coordinate parallel sessions. Each task lists its prerequisite
 ## Gate 4 - Feature Integration Guarding
 | ID | Title | Summary | Dependencies | Parallel | Deliverables | Status |
 |----|-------|---------|--------------|---------|--------------|--------|
-| G4-T1 | Integrated Parity Runbook | Execute full suite (email + drive) with adapters; document results. | Gates 1-3 complete for relevant modules | Sequenced Only | Runbook entry, Known_Issues.md updates | TODO |
+| G4-T1 | Integrated Parity Runbook | Execute full suite (email + drive) with adapters; document results. | Gates 1-3 complete for relevant modules | Sequenced Only | Runbook entry, Known_Issues.md updates | COMPLETE |
 | G4-T2 | Live Token Smoke Implementation | Implement opt-in test using real token (send + receive + drive share). | G0-T3, G4-T1 | Sequenced Only | Test harness, README instructions, env flag docs | TODO |
 
 ## Gate 5 - Execution Strategy (optional)
@@ -93,13 +103,27 @@ Use this board to coordinate parallel sessions. Each task lists its prerequisite
 ## Gate 6 - Cleanup & Documentation
 | ID | Title | Summary | Dependencies | Parallel | Deliverables | Status |
 |----|-------|---------|--------------|---------|--------------|--------|
-| G6-T1 | Legacy Path Retirement | Remove unused legacy wiring once adapters proven. | Gates 1-4 | Sequenced Only | Code removal, changelog, doc updates | TODO |
-| G6-T2 | Final Docs & Blueprint Audit | Refresh docs/blueprints/tests to reflect finished architecture. | G6-T1 | Sequenced Only | Doc sweep, blueprint diff report | TODO |
+| G6-T1 | Legacy Path Retirement | Remove unused legacy wiring once adapters proven. | Gates 1-4 | Sequenced Only | Code removal, changelog, doc updates | COMPLETE |
+| G6-T2 | Final Docs & Blueprint Audit | Refresh docs/blueprints/tests to reflect finished architecture. | G6-T1 | Sequenced Only | Doc sweep, blueprint diff report | COMPLETE |
+
+
+## Gate 7 - Architecture V2 Adoption
+| ID | Title | Summary | Dependencies | Parallel | Deliverables | Status |
+|----|-------|---------|--------------|---------|--------------|--------|
+| G7-T1 | Package Skeleton Migration | Move runtime modules into simple_mailer/ package with compatibility shims. | Gates 0-6 | Sequenced Only | New package layout, import shims, updated setup/tests | COMPLETE |
+| G7-T2 | Adapter Bridge Wiring | Introduce adapters/legacy_* modules and reroute orchestrator/manual surfaces. | G7-T1 | Parallel OK | Adapter modules, updated orchestrator wiring, doc note | COMPLETE |
+| G7-T3 | UI Entry Flip | Point ui.py entrypoint at orchestrator ui_shell behind feature flag. | G7-T2 | Sequenced Only | Feature-flagged UI flip, snapshot updates, docs | COMPLETE |
+| G7-T4 | Core Utility Relocation | Relocate html_randomizer/html_renderer and header/throttling helpers into core package. | G7-T1 | Parallel OK | Relocated modules, caller updates, refreshed tests | COMPLETE |
+| G7-T5 | Credential Adapter Consolidation | Extract token_json/app_password loaders into credentials package and harmonise callers. | G7-T1, G3-T2 | Parallel OK | Credential adapters, updated UI/mailer flows, tests | COMPLETE |
+| G7-T6 | Docs & Test Cleanup | Finalise docs, task board, and remove obsolete legacy wiring after parity run. | G7-T2, G7-T3, G7-T4, G7-T5 | Sequenced Only | Updated docs, parity report, legacy removals | COMPLETE |
 
 
 
-
-
+**Execution Order (Complete)**
+- All phases executed and verified via full pytest suite (2025-10-06).
+- Phase 1: Run G7-T2, G7-T4, G7-T5 in parallel (all prerequisites satisfied).
+- Phase 2: After G7-T2 completes, execute G7-T3 (Sequenced Only).
+- Phase 3: When G7-T2, G7-T3, G7-T4, and G7-T5 are COMPLETE, finish with G7-T6.
 
 
 

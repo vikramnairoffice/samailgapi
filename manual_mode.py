@@ -29,8 +29,8 @@ except ImportError:  # pragma: no cover - optional dependency
 
 from content import expand_spintax, render_tagged_content, generate_sender_name
 
-from html_randomizer import randomize_html
-from html_renderer import html_renderer, PlaywrightUnavailable
+from simple_mailer.core.html_randomizer import randomize_html
+from simple_mailer.core.html_renderer import html_renderer, PlaywrightUnavailable
 
 
 _TEXT_EXTENSIONS = {'.txt', '.csv', '.md', '.json', '.html', '.htm'}

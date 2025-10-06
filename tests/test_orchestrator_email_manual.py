@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestrator import email_manual
+from simple_mailer.orchestrator import email_manual
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "ui_snapshots"

@@ -15,7 +15,7 @@ Principles
 - senders/gmail_rest: builds MIME with headers/attachments; parity fixtures compare generated payloads with legacy outputs.
 - senders/gmail_smtp: guards required credentials, normalises headers, and wraps legacy SMTP send + mailbox metrics errors for actionable messages.
 - orchestrator/modes: ensures adapters pass through configuration without mutation.
-- orchestrator/ui_shell: feature flag guard keeps legacy layout default until the new shell is ready.
+- orchestrator/ui_shell: feature flag guard (`SIMPLE_MAILER_UI_SHELL=1`) keeps legacy layout default until the new shell is ready.
 - `tests/test_mailer_parity.py`: locks Gmail send headers, compose fallbacks, invoice attachments, and delay handling with mocked network and filesystem boundaries.
 
 ## Integration Tests
@@ -28,11 +28,18 @@ Principles
 ## Visual & Snapshot Tests
 
 - Gardio blueprint exports diffed against baseline per mode.
+- Blueprint audit checks docs/BLUEPRINT_AUDIT.md hashes against fixtures via tests/test_docs_blueprint_audit.py.
 - Manual preview snapshots (preview_tests.py) executed under fixed seed; failures block adapter swaps.
 
 ## Live Smoke (optional, when tokens provided)
 
 ### G0-T3 Live Token Smoke Spec
+
+### Harness usage (G4-T2)
+- Live harness code lives in `testing/live_token_smoke.py`.
+- Tests guard helper behaviour in `tests/test_live_token_smoke.py`; mocked paths run by default.
+- Set `LIVE_TOKEN_SMOKE=1` and rerun the test module with `-k live_smoke_integration` to exercise the real token flow.
+- Expect Gmail + Drive network calls; only run in staging mailboxes with verified tokens.
 
 - Scope: opt-in harness that exercises Gmail send, inbox retrieval, and Drive share using a real OAuth token without touching production parity tests.
 - Trigger: run only when `LIVE_TOKEN_SMOKE=1` inside Colab; guard with try/skip messaging when env flag or token bundle missing.
@@ -42,7 +49,6 @@ Principles
 - Error handling: emit actionable failures (missing env, scope mismatch, API errors) and capture raw response payloads for debugging.
 - TDD hooks: plan separate integration tests per phase with mock transport, plus live harness marked `@pytest.mark.live_token` to avoid accidental CI runs.
 - Next steps: implementation tracked by G4-T2 ticket; see `docs/G4-T2_live_token_smoke.md` for execution checklist.
-
 
 - Controlled inbox send verifying headers/body/attachments from adapter path match legacy.
 - Skipped by default in CI; opt-in via environment flag in Colab.

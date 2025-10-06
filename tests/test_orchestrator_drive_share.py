@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestrator import drive_share
+from simple_mailer.orchestrator import drive_share
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "ui_snapshots"

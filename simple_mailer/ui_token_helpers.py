@@ -1,0 +1,810 @@
+"""Simple helpers connecting the Gradio UI to the Gmail REST mailer."""
+
+import html as _html_module
+import traceback
+import requests
+from functools import wraps
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from urllib.parse import quote
+
+from .mailer import campaign_events, update_file_stats, load_accounts, fetch_mailbox_totals_app_password
+from .content import generate_sender_name
+from manual_mode import ManualConfig, parse_extra_tags, to_attachment_specs
+from simple_mailer.manual.manual_preview_adapter import (
+    build_snapshot as manual_build_snapshot,
+    attachment_listing as manual_attachment_listing_adapter,
+    attachment_preview as manual_attachment_preview_adapter,
+)
+
+
+
+from simple_mailer.credentials import oauth_json, validation as credential_validation
+
+def analyze_token_files(token_files, auth_mode: str = 'oauth') -> str:
+    """Return a short status string for uploaded credential files."""
+    token_msg, _ = update_file_stats(token_files, None, auth_mode=auth_mode)
+    return token_msg
+
+
+def _build_output(log_lines: List[str], status: str, summary: str) -> str:
+    """Helper to prepare consistent UI output for the consolidated run panel."""
+    clipped_logs = log_lines[-200:]
+    log_text = "\n".join(clipped_logs).strip()
+    status_text = (status or 'Idle').strip() or 'Idle'
+    sections = [f"Status: {status_text}"]
+    if summary:
+        sections.append(f"Summary: {summary}")
+    if log_text:
+        sections.extend(['', 'Log:', log_text])
+    return "\n".join(sections)
+
+
+def ui_error_wrapper(*, extra_outputs: Tuple[str, ...] = ()):
+    """Wrap a generator function and surface exceptions to the UI."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                yield from func(*args, **kwargs)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                details = traceback.format_exc()
+                message = f"Error: {exc}\n\n{details}"
+                combined = _build_output([message], "", "Failed")
+                yield (combined, *extra_outputs)
+        return wrapper
+    return decorator
+
+
+def _format_progress(event) -> str:
+    account = event.get('account', 'unknown')
+    lead = event.get('lead', 'unknown')
+    if event.get('success'):
+        return f"OK Sent to {lead} using {account}"
+    return f"FAIL for {lead} using {account}: {event.get('message')}"
+
+
+def build_gmass_preview(mode, token_files, auth_mode: str = 'oauth', oauth_accounts=None) -> Tuple[str, List[List[str]]]:
+    """Return status text and table rows for the GMass preview panel."""
+    if (mode or '').lower() != 'gmass':
+        return '', []
+
+    combined = merge_token_sources(token_files, oauth_accounts)
+    accounts, _ = load_accounts(combined, auth_mode=auth_mode)
+    emails = [account.get('email') for account in accounts if account.get('email')]
+
+    if not emails:
+        return "No Gmail accounts available for GMass preview.", []
+
+    table: List[List[str]] = []
+    for email in emails:
+        local_part = email.split('@', 1)[0] if '@' in email else email
+        encoded = quote(local_part)
+        table.append([email, f"https://www.gmass.co/inbox?q={encoded}"])
+
+    status = f"Completed! Check {len(table)} GMass URLs."
+    return status, table
+
+def gmass_rows_to_markdown(rows: List[List[str]]) -> str:
+    """Convert GMass preview rows into Markdown with clickable links."""
+    if not rows:
+        return ""
+
+    lines = []
+    for account, url in rows:
+        safe_account = account or "Unknown account"
+        safe_url = url or ""
+        if not safe_url:
+            lines.append(f"- {safe_account}")
+        else:
+            lines.append(f"- [{safe_account}]({safe_url})")
+    return "\n".join(lines)
+
+
+
+
+def merge_token_sources(token_files, oauth_accounts):
+    """Return a combined list of uploaded files and in-memory OAuth credentials."""
+    combined: List[Any] = []
+    if token_files:
+        combined.extend(list(token_files))
+    if oauth_accounts:
+        combined.extend(list(oauth_accounts))
+    return combined
+
+
+def authorize_oauth_client(client_json: str, existing_accounts, auth_mode: str = 'gmail_api'):
+    """Run the OAuth flow and return (status_message, updated_accounts)."""
+    accounts = list(existing_accounts or [])
+    mode = credential_validation.normalize_mode(auth_mode)
+    if mode != 'oauth':
+        return (
+            'Enable the Gmail API credential mode to authorise OAuth credentials.',
+            accounts,
+        )
+
+    if not client_json or not client_json.strip():
+        return ('Paste the Google OAuth client JSON to authorise Gmail + Drive scopes.', accounts)
+
+    try:
+        email, creds = oauth_json.initialize(client_json)
+    except Exception as exc:  # pragma: no cover - network/consent errors
+        return (f'OAuth authorisation failed: {exc}', accounts)
+
+    filtered = [
+        entry for entry in accounts
+        if not (isinstance(entry, dict) and entry.get('__in_memory_oauth__') and entry.get('email') == email)
+    ]
+    filtered.append({
+        '__in_memory_oauth__': True,
+        'email': email,
+        'creds': creds,
+        'auth_type': 'oauth',
+        'label': f'In-memory OAuth ({email})',
+    })
+    message = f'Authorised {email}. Gmail + Drive scopes are now active.'
+    return message, filtered
+
+
+GMAIL_LABEL_URL = "https://gmail.googleapis.com/gmail/v1/users/me/labels/{label_id}"
+
+def _fetch_label_total(creds, label_id: str) -> int:
+    token = getattr(creds, 'token', '')
+    if not token:
+        raise RuntimeError("Missing Gmail access token.")
+
+    response = requests.get(
+        GMAIL_LABEL_URL.format(label_id=label_id),
+        headers={'Authorization': f'Bearer {token}'},
+        timeout=15,
+    )
+
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Gmail label fetch failed ({label_id}): {response.status_code} - {getattr(response, 'text', '')}"
+        )
+
+    data = response.json() or {}
+    total = data.get('messagesTotal', 0)
+    try:
+        return int(total)
+    except (TypeError, ValueError):
+        return 0
+
+
+def mailbox_rows_to_markdown(rows: List[Tuple[str, int, int]]) -> str:
+    if not rows:
+        return ""
+
+    lines: List[str] = []
+    for email, inbox_total, sent_total in rows:
+        name = email or 'Unknown account'
+        inbox_value = inbox_total if isinstance(inbox_total, int) else int(inbox_total or 0)
+        sent_value = sent_total if isinstance(sent_total, int) else int(sent_total or 0)
+        lines.append(f"- {name} - Inbox: {inbox_value} | Sent: {sent_value}")
+    return "\n".join(lines)
+
+
+def fetch_mailbox_counts(token_files, auth_mode: str = 'oauth', oauth_accounts=None) -> Tuple[str, str]:
+    combined = merge_token_sources(token_files, oauth_accounts)
+    accounts, token_errors = load_accounts(combined, auth_mode=auth_mode)
+    rows: List[Tuple[str, int, int]] = []
+    issues: List[str] = list(token_errors)
+
+    for account in accounts:
+        email = account.get('email') or account.get('path') or 'Unknown credential'
+        auth_type = (account.get('auth_type') or 'oauth').lower()
+        try:
+            if auth_type in {'app_password', 'app-password', 'app password'}:
+                inbox_total, sent_total = fetch_mailbox_totals_app_password(account['email'], account['password'])
+            else:
+                creds = account.get('creds')
+                inbox_total = _fetch_label_total(creds, 'INBOX')
+                sent_total = _fetch_label_total(creds, 'SENT')
+        except Exception as exc:
+            issues.append(f"{email}: {exc}")
+            continue
+        rows.append((email, inbox_total, sent_total))
+
+    if rows:
+        status = f"Mailbox counts ready for {len(rows)} account(s)."
+    elif accounts:
+        status = "Failed to collect mailbox counts for uploaded credentials."
+    else:
+        status = "No Gmail credential files available."
+
+    if issues:
+        status += f" Issues: {'; '.join(issues)}"
+
+    markdown = mailbox_rows_to_markdown(rows)
+    return status, markdown
+
+def _extract_update_value(value):
+    if isinstance(value, dict) and value.get('__type__') == 'update':
+        return value.get('value')
+    return value
+
+
+def _resolve_manual_body_image_choice(*, body_is_html, checkbox_value, stored_value):
+    if not bool(body_is_html):
+        return False
+    if stored_value is not None:
+        extracted_state = _extract_update_value(stored_value)
+        if extracted_state is not None:
+            return bool(extracted_state)
+    extracted_checkbox = _extract_update_value(checkbox_value)
+    return bool(extracted_checkbox)
+
+
+@ui_error_wrapper()
+def start_manual_campaign(
+    token_files,
+    leads_file,
+    send_delay_seconds,
+    mode,
+    manual_subject,
+    manual_body,
+    manual_body_is_html,
+    manual_body_image_enabled,
+    manual_randomize_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    manual_sender_name,
+    manual_change_name,
+    manual_sender_type,
+    advance_header=False,
+    force_header=False,
+    auth_mode: str = 'oauth',
+    oauth_accounts=None,
+):
+    """Manual mode sender wired to the shared campaign generator."""
+    log_lines: List[str] = []
+    status = "Waiting"
+    summary = ""
+
+    manual_config = build_manual_config_from_inputs(
+        manual_subject=manual_subject,
+        manual_body=manual_body,
+        manual_body_is_html=manual_body_is_html,
+        manual_body_image_enabled=manual_body_image_enabled,
+        manual_randomize_html=manual_randomize_html,
+        manual_tfn=manual_tfn,
+        manual_extra_tags=manual_extra_tags,
+        manual_attachment_enabled=manual_attachment_enabled,
+        manual_attachment_mode=manual_attachment_mode,
+        manual_attachment_files=manual_attachment_files,
+        manual_inline_html=manual_inline_html,
+        manual_inline_name=manual_inline_name,
+        manual_sender_name=manual_sender_name,
+        manual_change_name=manual_change_name,
+        manual_sender_type=manual_sender_type,
+    )
+
+    combined_tokens = merge_token_sources(token_files, oauth_accounts)
+
+    events = campaign_events(
+        token_files=combined_tokens,
+        leads_file=leads_file,
+        send_delay_seconds=send_delay_seconds,
+        mode=mode,
+        content_template='own_proven',
+        subject_template='own_proven',
+        body_template='own_proven',
+        email_content_mode='Attachment',
+        attachment_format='pdf',
+        invoice_format='pdf',
+        support_number='',
+        advance_header=advance_header,
+        force_header=force_header,
+        sender_name_type=manual_sender_type or 'business',
+        attachment_folder='',
+        auth_mode=auth_mode,
+        manual_config=manual_config,
+    )
+
+    for event in events:
+        kind = event.get('kind')
+        if kind == 'token_error':
+            message = f"Token issue: {event['message']}"
+            log_lines.append(message)
+            status = message
+        elif kind == 'fatal':
+            summary = event['message']
+            log_lines.append(summary)
+            yield _build_output(log_lines, status, summary)
+            return
+        elif kind == 'progress':
+            status = f"Total {event['successes']}/{event['total']}"
+            log_lines.append(_format_progress(event))
+        elif kind == 'done':
+            summary = event['message']
+        else:
+            log_lines.append(str(event))
+
+        yield _build_output(log_lines, status, summary)
+
+    yield _build_output(log_lines, status, summary or "Completed")
+
+
+
+
+_PREVIEW_EMAIL = "preview@example.com"
+
+
+def build_manual_config_from_inputs(
+    manual_subject,
+    manual_body,
+    manual_body_is_html,
+    manual_body_image_enabled,
+    manual_randomize_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    manual_sender_name,
+    manual_change_name,
+    manual_sender_type,
+):
+    extra_tags = parse_extra_tags(manual_extra_tags)
+    inline_html = manual_inline_html if manual_attachment_enabled else ''
+    inline_name = manual_inline_name if manual_attachment_enabled else ''
+    specs = to_attachment_specs(
+        manual_attachment_files if manual_attachment_enabled else [],
+        inline_html,
+        inline_name,
+    )
+    normalized_mode = (manual_attachment_mode or 'original').strip().lower().replace(' ', '_')
+    return ManualConfig(
+        enabled=True,
+        subject=manual_subject or '',
+        body=manual_body or '',
+        body_is_html=bool(manual_body_is_html),
+        body_image_enabled=bool(manual_body_image_enabled),
+        randomize_html=bool(manual_randomize_html),
+        tfn=manual_tfn or '',
+        extra_tags=extra_tags,
+        attachments=specs,
+        attachment_mode=normalized_mode,
+        attachments_enabled=bool(manual_attachment_enabled),
+        sender_name=manual_sender_name or '',
+        change_name_every_time=bool(manual_change_name),
+        sender_name_type=manual_sender_type or 'business',
+    )
+
+
+
+def manual_preview_snapshot(
+    *,
+    manual_body,
+    manual_body_is_html,
+    manual_body_image_enabled,
+    manual_randomize_html,
+    manual_tfn,
+    manual_extra_tags,
+    manual_attachment_enabled,
+    manual_attachment_mode,
+    manual_attachment_files,
+    manual_inline_html,
+    manual_inline_name,
+    selected_attachment_name,
+):
+    config = build_manual_config_from_inputs(
+        manual_subject='',
+        manual_body=manual_body,
+        manual_body_is_html=manual_body_is_html,
+        manual_body_image_enabled=manual_body_image_enabled,
+        manual_randomize_html=manual_randomize_html,
+        manual_tfn=manual_tfn,
+        manual_extra_tags=manual_extra_tags,
+        manual_attachment_enabled=manual_attachment_enabled,
+        manual_attachment_mode=manual_attachment_mode,
+        manual_attachment_files=manual_attachment_files,
+        manual_inline_html=manual_inline_html,
+        manual_inline_name=manual_inline_name,
+        manual_sender_name='',
+        manual_change_name=False,
+        manual_sender_type='business',
+    )
+
+    return manual_build_snapshot(
+        config,
+        preview_email=_PREVIEW_EMAIL,
+        selected_attachment_name=selected_attachment_name,
+    )
+
+
+
+def manual_random_sender_name(sender_type: str = 'business') -> str:
+    return generate_sender_name(sender_type or 'business')
+
+
+def manual_attachment_listing(files, inline_html='', inline_name=''):
+    """Return dropdown choices and initial preview for manual attachments."""
+    specs = to_attachment_specs(files, inline_html, inline_name)
+    return manual_attachment_listing_adapter(specs)
+
+
+
+def manual_attachment_preview_content(selected_name: str, files, inline_html='', inline_name=''):
+    """Return HTML/text preview content for the selected manual attachment."""
+    specs = to_attachment_specs(files, inline_html, inline_name)
+    html_payload, text_payload = manual_attachment_preview_adapter(specs, selected_name)
+    return html_payload, text_payload
+
+
+
+@ui_error_wrapper(extra_outputs=("", ""))
+def start_campaign(token_files, leads_file, send_delay_seconds, mode,
+                   email_content_mode, attachment_folder, invoice_format,
+                   support_number, advance_header=False, force_header=False, sender_name_type=None, content_template=None,
+                   subject_template=None, body_template=None, auth_mode: str = 'oauth', oauth_accounts=None):
+    """Generator used by the Gradio UI button to stream campaign events."""
+    log_lines: List[str] = []
+    status = "Waiting"
+    summary = ""
+
+    combined_tokens = merge_token_sources(token_files, oauth_accounts)
+    gmass_status, gmass_rows = build_gmass_preview(mode, combined_tokens, auth_mode=auth_mode)
+    if gmass_status == "" and gmass_rows:
+        # Defensive guard: avoid mismatched state
+        gmass_rows = []
+    gmass_markdown = gmass_rows_to_markdown(gmass_rows)
+
+    events = campaign_events(
+        token_files=combined_tokens,
+        leads_file=leads_file,
+        send_delay_seconds=send_delay_seconds,
+        mode=mode,
+        content_template=content_template,
+        subject_template=subject_template,
+        body_template=body_template,
+        email_content_mode=email_content_mode,
+        attachment_format='pdf',
+        invoice_format=invoice_format,
+        support_number=support_number,
+        advance_header=advance_header,
+        force_header=force_header,
+        sender_name_type=sender_name_type,
+        attachment_folder=attachment_folder,
+        auth_mode=auth_mode,
+        manual_config=None,
+    )
+
+    mode_lower = (mode or '').lower()
+    if mode_lower != 'gmass':
+        gmass_status = ""
+        gmass_markdown = ""
+
+    for event in events:
+        kind = event.get('kind')
+        if kind == 'token_error':
+            message = f"Token issue: {event['message']}"
+            log_lines.append(message)
+            status = message
+        elif kind == 'fatal':
+            summary = event['message']
+            log_lines.append(summary)
+            yield (_build_output(log_lines, status, summary), gmass_status, gmass_markdown)
+            return
+        elif kind == 'progress':
+            status = f"Total {event['successes']}/{event['total']}"
+            log_lines.append(_format_progress(event))
+        elif kind == 'done':
+            summary = event['message']
+        else:
+            log_lines.append(str(event))
+
+        yield (_build_output(log_lines, status, summary), gmass_status, gmass_markdown)
+
+    # Final emit to ensure summary is visible
+    yield (_build_output(log_lines, status, summary or "Completed"), gmass_status, gmass_markdown)
+
+
+@ui_error_wrapper(extra_outputs=("", ""))
+
+
+
+def run_unified_campaign(
+
+    active_ui_mode,
+
+    token_files,
+
+    leads_file,
+
+    send_delay_seconds,
+
+    mode,
+
+    email_content_mode,
+
+    attachment_folder,
+
+    invoice_format,
+
+    support_number,
+
+    manual_subject,
+
+    manual_body,
+
+    manual_body_is_html,
+
+    manual_body_image_enabled,
+
+    manual_body_image_state,
+
+    manual_randomize_html,
+
+    manual_tfn,
+
+    manual_extra_tags,
+
+    manual_attachment_enabled,
+
+    manual_attachment_mode,
+
+    manual_attachment_files,
+
+    manual_inline_html,
+
+    manual_inline_name,
+
+    manual_sender_name,
+
+    manual_change_name,
+
+    manual_sender_type,
+
+    advance_header=False,
+
+    force_header=False,
+
+    auth_mode: str = 'oauth',
+
+    sender_name_type=None,
+
+    content_template=None,
+
+    subject_template=None,
+
+    body_template=None,
+
+    oauth_accounts=None,
+
+):
+
+    selected_mode = (active_ui_mode or 'automatic').strip().lower()
+
+    if selected_mode == 'automated':
+
+        selected_mode = 'automatic'
+
+
+
+    if selected_mode == 'multi':
+
+        yield ("Status: Use the Multi Send button to launch multi-account campaigns.", "", "")
+
+        return
+
+
+
+    if selected_mode == 'manual':
+
+        resolved_body_image_enabled = _resolve_manual_body_image_choice(
+            body_is_html=manual_body_is_html,
+            checkbox_value=manual_body_image_enabled,
+            stored_value=manual_body_image_state,
+        )
+
+        generator = start_manual_campaign(
+
+            token_files,
+
+            leads_file,
+
+            send_delay_seconds,
+
+            mode,
+
+            manual_subject,
+
+            manual_body,
+
+            manual_body_is_html,
+
+            resolved_body_image_enabled,
+
+            manual_randomize_html,
+
+            manual_tfn,
+
+            manual_extra_tags,
+
+            manual_attachment_enabled,
+
+            manual_attachment_mode,
+
+            manual_attachment_files,
+
+            manual_inline_html,
+
+            manual_inline_name,
+
+            manual_sender_name,
+
+            manual_change_name,
+
+            manual_sender_type,
+
+            advance_header,
+
+            force_header,
+
+            auth_mode,
+
+        oauth_accounts=oauth_accounts,
+
+        )
+
+        for output in generator:
+
+            yield (output, "", "")
+
+        return
+
+
+
+    generator = start_campaign(
+
+        token_files,
+
+        leads_file,
+
+        send_delay_seconds,
+
+        mode,
+
+        email_content_mode,
+
+        attachment_folder,
+
+        invoice_format,
+
+        support_number,
+
+        advance_header,
+
+        force_header,
+
+        sender_name_type,
+
+        content_template,
+
+        subject_template,
+
+        body_template,
+
+        auth_mode,
+
+        oauth_accounts=oauth_accounts,
+
+    )
+
+    for output in generator:
+
+        yield output
+
+
+
+
+
+@ui_error_wrapper(extra_outputs=("", ""))
+
+def run_multi_manual_campaign(
+
+    per_account_state,
+
+    token_files,
+
+    leads_file,
+
+    send_delay_seconds,
+
+    mode,
+
+    auth_mode: str = 'oauth',
+
+    advance_header: bool = False,
+
+    force_header: bool = False,
+
+    oauth_accounts=None,
+
+):
+
+    state = per_account_state or {}
+
+    if not state:
+
+        yield ("Status: No accounts configured for multi mode.", "", "")
+
+        return
+
+
+
+    for account, config in state.items():
+
+        account_label = str(account)
+
+        generator = start_manual_campaign(
+
+            token_files,
+
+            leads_file,
+
+            send_delay_seconds,
+
+            mode,
+
+            config.get('manual_subject', ''),
+
+            config.get('manual_body', ''),
+
+            bool(config.get('manual_body_is_html')),
+
+            bool(config.get('manual_body_image_enabled')),
+
+            bool(config.get('manual_randomize_html')),
+
+            config.get('manual_tfn', ''),
+
+            config.get('manual_extra_tags') or [],
+
+            bool(config.get('manual_attachment_enabled')),
+
+            config.get('manual_attachment_mode', 'original'),
+
+            config.get('manual_attachment_files') or [],
+
+            config.get('manual_inline_html', ''),
+
+            config.get('manual_inline_name', 'inline.html'),
+
+            config.get('manual_sender_name', ''),
+
+            bool(config.get('manual_change_name', True)),
+
+            config.get('manual_sender_type', 'business'),
+
+            advance_header,
+
+            force_header,
+
+            auth_mode,
+
+            oauth_accounts=oauth_accounts,
+
+        )
+
+        for output in generator:
+
+            message = output or ''
+
+            prefix = f"[{account_label}] " if message else f"[{account_label}]"
+
+            yield (f"{prefix}{message}", "", "")
+
+
+
+
+
+

@@ -1,7 +1,7 @@
 import manual_mode
 import pytest
 
-from manual.manual_config_adapter import (
+from simple_mailer.manual.manual_config_adapter import (
     create_config,
     build_context,
     render_subject as adapter_render_subject,

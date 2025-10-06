@@ -1,4 +1,4 @@
-# Simple Gmail REST Mailer
+﻿# Simple Gmail REST Mailer
 
 Token-first Gmail sender with a Gradio dashboard, personalized invoice generation, and a Colab-friendly workflow. Upload OAuth token JSON files, tune email content, and monitor progress from the browser or a notebook.
 
@@ -80,8 +80,13 @@ setup.py            # Packaging configuration
 - Use the console script after installation: `simple-mailer`.
 - Keep runtime assets (logos, prebuilt attachments, tokens) out of version control; they are covered in `.gitignore`.
 
-## Feature flags
-- `LEGACY_UI_SHELL` defaults to `1` to keep the legacy Gradio layout. Set it to `0` to load the in-progress orchestrator scaffold.
+
+## Live token smoke harness
+- Set `LIVE_TOKEN_SMOKE=1` in the environment before invoking the harness.
+- Provide an OAuth token JSON seeded with Gmail send/read and Drive scopes; store it under `gmail_tokens/` or load it in Colab.
+- Run `python -m pytest tests/test_live_token_smoke.py` to execute the mocked guardrails; add `-k live_smoke_integration` after setting the flag to exercise the real token flow.
+- The harness sends a single invoice email, polls the inbox, and shares the generated invoice via Drive.
+- Only run this in a controlled Colab or staging mailbox because it performs live network calls.
 
 ## License
 MIT - for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.

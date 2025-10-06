@@ -2,7 +2,7 @@ import types
 
 import pytest
 
-from credentials import oauth_json
+from simple_mailer.credentials import oauth_json
 
 
 CLIENT_JSON = '{"installed": {"client_id": "abc", "client_secret": "xyz", "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob"], "auth_uri": "https://accounts.google.com/o/oauth2/auth", "token_uri": "https://oauth2.googleapis.com/token"}}'

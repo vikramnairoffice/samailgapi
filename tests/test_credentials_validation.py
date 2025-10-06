@@ -1,6 +1,6 @@
 import pytest
 
-from credentials import validation
+from simple_mailer.credentials import validation
 
 
 class DummyFile:

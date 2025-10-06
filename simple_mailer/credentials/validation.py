@@ -1,10 +1,12 @@
-"""Shared credential validation helpers used across UI modes."""
+﻿"""Shared credential validation helpers used across UI modes."""
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+
+from . import app_password as app_password_adapter
 
 
 _APP_PASSWORD_ALIASES = {"app_password", "app-password", "app password"}
@@ -69,17 +71,23 @@ def partition_token_inputs(entries: Optional[Sequence[Any]]) -> Tuple[List[Dict[
     return in_memory_accounts, file_inputs, errors
 
 
-def load_oauth_entries(file_inputs: Sequence[Any], *, loader: Optional[Callable[[str], Tuple[str, Any]]]) -> Tuple[List[Dict[str, Any]], List[str]]:
+def load_oauth_entries(
+    file_inputs: Sequence[Any],
+    *,
+    loader: Optional[Callable[[str], Tuple[str, Any]]] = None,
+) -> Tuple[List[Dict[str, Any]], List[str]]:
     accounts: List[Dict[str, Any]] = []
     errors: List[str] = []
 
-    if loader is None:
+    actual_loader = loader
+
+    if actual_loader is None:
         return accounts, errors
 
     for file_obj in file_inputs or []:
         path = _coerce_path(file_obj)
         try:
-            email, creds = loader(path)
+            email, creds = actual_loader(path)
         except Exception as exc:  # pragma: no cover - defensive to surface loader errors
             errors.append(f"{os.path.basename(path)}: {exc}")
             continue
@@ -94,29 +102,9 @@ def load_app_password_entries(file_inputs: Sequence[Any]) -> Tuple[List[Dict[str
 
     for file_obj in file_inputs or []:
         path = _coerce_path(file_obj)
-        try:
-            with open(path, "r", encoding="utf-8", errors="ignore") as handle:
-                for line_number, raw_line in enumerate(handle, start=1):
-                    line = raw_line.strip()
-                    if not line:
-                        continue
-                    if line.count(",") != 1:
-                        errors.append(f"{os.path.basename(path)} line {line_number}: invalid entry")
-                        continue
-                    email, password = (segment.strip() for segment in line.split(",", 1))
-                    if not email or not password:
-                        errors.append(f"{os.path.basename(path)} line {line_number}: invalid entry")
-                        continue
-                    accounts.append(
-                        {
-                            "email": email,
-                            "password": password,
-                            "path": f"{path}:{line_number}",
-                            "auth_type": "app_password",
-                        }
-                    )
-        except Exception as exc:
-            errors.append(f"{os.path.basename(path)}: {exc}")
+        parsed, parse_errors = app_password_adapter.load(path)
+        accounts.extend(parsed)
+        errors.extend(parse_errors)
 
     return accounts, errors
 

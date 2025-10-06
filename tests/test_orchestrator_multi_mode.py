@@ -5,7 +5,7 @@ from pathlib import Path
 import gradio as gr
 import pytest
 
-from orchestrator import multi_mode
+from simple_mailer.orchestrator import multi_mode
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "ui_snapshots"

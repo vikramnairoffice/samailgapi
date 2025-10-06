@@ -2,7 +2,7 @@
 
 import mailer
 
-from senders import gmail_smtp
+from simple_mailer.senders import gmail_smtp
 
 
 def test_send_forwards_to_mailer(monkeypatch: pytest.MonkeyPatch) -> None:

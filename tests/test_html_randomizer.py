@@ -1,6 +1,6 @@
 import re
 
-from html_randomizer import randomize_html
+from simple_mailer.core.html_randomizer import randomize_html
 
 
 def _extract_colors(html: str):

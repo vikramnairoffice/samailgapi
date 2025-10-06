@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from core import spintax
+from simple_mailer.core import spintax
 
 
 def test_render_tags_uses_context_values():

@@ -1,5 +1,5 @@
 from pathlib import Path
-from setuptools import setup
+from setuptools import setup, find_packages
 
 ROOT = Path(__file__).parent
 
@@ -31,6 +31,17 @@ def read_readme():
         "Token-based Gmail REST mailer with Gradio UI and invoice generation."
     )
 
+PACKAGES = find_packages(include=[
+    'simple_mailer',
+    'simple_mailer.*',
+    'core',
+    'credentials',
+    'exec',
+    'manual',
+    'orchestrator',
+    'senders',
+])
+
 
 setup(
     name='simple-gmail-rest-mailer',
@@ -41,6 +52,7 @@ setup(
     long_description=read_readme(),
     long_description_content_type='text/markdown',
     url='https://github.com/vikramnairoffice/simple-gmail-rest-mailer',
+    packages=PACKAGES,
     py_modules=[
         'ui',
         'mailer',
@@ -81,11 +93,10 @@ setup(
     python_requires='>=3.7',
     include_package_data=True,
     package_data={'': ['*.md', '*.txt', '*.json']},
-    entry_points={'console_scripts': ['simple-mailer=ui:main']},
+    entry_points={'console_scripts': ['simple-mailer=simple_mailer.ui:main']},
     project_urls={
         'Bug Reports': 'https://github.com/vikramnairoffice/simple-gmail-rest-mailer/issues',
         'Source': 'https://github.com/vikramnairoffice/simple-gmail-rest-mailer',
         'Documentation': 'https://github.com/vikramnairoffice/simple-gmail-rest-mailer/blob/main/README.md',
     },
 )
-

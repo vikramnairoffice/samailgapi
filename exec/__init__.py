@@ -1,13 +1,5 @@
-﻿"""Execution executors for campaign dispatch."""
+"""Compatibility shim for legacy import exec usage."""
 
-__all__ = [
-    "ThreadPoolExecutor",
-    "SerialExecutor",
-]
+from simple_mailer._compat import bridge as _bridge
 
-try:
-    from .threadpool import ThreadPoolExecutor  # noqa: F401
-    from .serial import SerialExecutor  # noqa: F401
-except ImportError:
-    # During partial installation the modules may not be available yet.
-    pass
+_bridge(__name__, 'simple_mailer.exec')

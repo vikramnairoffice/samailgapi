@@ -13,7 +13,7 @@
 ## Phase C – UI Orchestrator Modes
 - Introduce `orchestrator/ui_shell.py` and `ui_modes/*`, each backed by shared components reused from the current Gradio layout.
 - Migrate `email_manual` first (feature flag on/off), then `email_automatic` (Bulk HTML), followed by `drive_share` and `multi_mode`.
-- Preserve the ability to flip back to the legacy UI shell until each mode’s parity tests and snapshots pass.
+- Preserve the ability to flip back to the legacy UI shell until parity is confirmed; retire it once Gate 6 completes.
 
 ## Phase D – Credential Convergence
 - Add `credentials/oauth_json.py` (in-memory tokens) while keeping token JSON and app-password flows untouched.

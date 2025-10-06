@@ -9,7 +9,7 @@ simple_mailer/
   app.py                       # entry for Colab
   orchestrator/
     __init__.py
-    ui_shell.py                # legacy UI bridged into mode registry via adapters
+    ui_shell.py                # orchestrator entrypoint exposing adapter-backed modes
     modes.py                   # registry for modes + feature flags
     adapters.py                # shims forwarding to existing UI components until replaced
   ui_modes/
@@ -45,10 +45,6 @@ simple_mailer/
     serial.py                  # single-thread baseline
     threadpool.py              # existing thread executor extracted
     async_exec.py              # optional async executor (feature-flagged)
-  adapters/
-    __init__.py
-    legacy_mailer.py           # forwards new interfaces to existing mailer until replaced
-    legacy_manual_mode.py      # exposes manual mode helpers via new contracts
   tests/
     ...                        # parity + regression suites
 ```
@@ -59,10 +55,11 @@ Notes
 - Gmail REST senders keep full Gmail API scope (send, headers, attachments, threading) unchanged.
 - OAuth token carries both Gmail and Drive scopes, so Drive adapters reuse the same credentials without prompting again.
 - UI components do not execute business logic; they call orchestrator adapters which in turn invoke core modules.
+- Legacy adapter bridges were retired once parity landed (G7-T6); modules now import manual helpers directly.
 
 ## Orchestration Flow
 
-1. UI Shell collects config while legacy components remain accessible behind feature flags.
+1. UI Shell collects config and surfaces adapter-backed modes (legacy components remain accessible through adapters without feature flags).
 2. Config passes through adapters that reuse existing validators and builders.
 3. Mode runner is selected from the registry (email_manual, email_automatic, drive_share, multi_mode) and bridges to legacy components when necessary.
 4. Runner composes work items and dispatches to `exec/*` using the same delay semantics.
@@ -75,7 +72,7 @@ Notes
 - Placeholder behaviour, randomization seeds, and throttling semantics must match the current production path.
 - Legacy TXT leads remain supported via adapters even after CSV becomes primary.
 - Deterministic seeds are routed through adapters to guarantee identical outputs for guard tests.
-- Any new module must provide a backwards-compatible façade exported from `adapters/` before callers switch.
+- Any new module must provide a backwards-compatible façade before callers switch (for example, module-level shims such as mailer.py or content.py).
 
 ## File Size Guidance
 

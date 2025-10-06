@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import mailer
 import pytest
 
-from senders import gmail_rest
+from simple_mailer.senders import gmail_rest
 
 
 def test_send_forwards_to_mailer(monkeypatch: pytest.MonkeyPatch) -> None:

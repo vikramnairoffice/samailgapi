@@ -46,3 +46,4 @@ Acceptance checks:
 ## 4. Documentation and Blueprint Sync
 - After each gate, update FEATURES.md, Plan.md, task.md status, Gardio blueprint annotations, and parity fixture notes.
 - Do not retire legacy entry points until adapters, docs, and guard suites confirm equivalence.
+- Blueprint hashes recorded in docs/BLUEPRINT_AUDIT.md; refresh whenever fixtures change.

@@ -7,10 +7,10 @@ from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import gradio as gr
 
-from content import DEFAULT_SENDER_NAME_TYPE, SENDER_NAME_TYPES
-from manual import manual_config_adapter, manual_preview_adapter
+from simple_mailer.manual import manual_config_adapter, manual_preview_adapter
 from manual_mode import ManualAttachmentSpec, ManualConfig
 from ui_token_helpers import manual_random_sender_name
+from content import DEFAULT_SENDER_NAME_TYPE, SENDER_NAME_TYPES
 
 DEFAULT_PREVIEW_EMAIL = "preview@example.com"
 _PREVIEW_PLACEHOLDER = (

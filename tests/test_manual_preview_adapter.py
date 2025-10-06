@@ -3,8 +3,8 @@ import types
 import manual_mode
 import pytest
 
-from manual.manual_config_adapter import create_config, to_attachment_specs
-from manual.manual_preview_adapter import (
+from simple_mailer.manual.manual_config_adapter import create_config, to_attachment_specs
+from simple_mailer.manual.manual_preview_adapter import (
     build_snapshot,
     attachment_listing,
     attachment_preview,

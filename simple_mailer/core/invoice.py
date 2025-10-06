@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from invoice import InvoiceGenerator as _LEGACY_GENERATOR
+from simple_mailer.invoice import InvoiceGenerator as _LEGACY_GENERATOR
 
 
 class InvoiceGenerator:

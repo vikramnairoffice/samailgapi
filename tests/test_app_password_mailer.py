@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 import mailer
+import simple_mailer.credentials.app_password as credential_app_password
 
 
 class DummyFile:
@@ -120,7 +121,12 @@ def test_fetch_mailbox_totals_app_password(monkeypatch):
         assert host == "imap.gmail.com"
         return dummy_imap
 
-    monkeypatch.setattr(mailer.imaplib, "IMAP4_SSL", imap_factory)
+    original_fetch = credential_app_password.fetch_mailbox_totals
+    monkeypatch.setattr(
+        credential_app_password,
+        "fetch_mailbox_totals",
+        lambda email, password: original_fetch(email, password, imap_factory=imap_factory),
+    )
 
     inbox, sent = mailer.fetch_mailbox_totals_app_password("account@example.com", "pass-123")
 

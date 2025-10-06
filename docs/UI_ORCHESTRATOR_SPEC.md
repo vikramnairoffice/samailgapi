@@ -6,7 +6,8 @@ Principles
 - Gmail REST pipeline retains full scope (send, headers, attachments, threading) with no behavioural change.
 - Tokens/creds live in memory per session; no disk persistence.
 - Single consent covers Gmail + Drive scopes; credential UI simply routes the shared token to the relevant adapters.
-- Feature flags allow instant rollback to legacy UI shell until parity checks succeed.
+- Legacy UI shell has been retired; the orchestrator layout is always active.
+- Manual config and preview helpers now import directly from `manual.manual_config_adapter` and `manual.manual_preview_adapter`; the legacy adapter bridge was removed after parity.
 
 ## Setup View
 
@@ -47,4 +48,4 @@ Available modes
 - Credential selection explicit; adapters share validation across App Password, Token JSON, OAuth.
 - CSV must include header `email,fname,lname`; adapters map TXT files into CSV-like structures for parity tests.
 - Spintax placeholders that are missing still render empty strings; randomizer seeded through shared config to ensure parity.
-- Feature flag `LEGACY_UI_SHELL` keeps original layout available until new orchestrator passes guard suite.
+- Legacy UI shell was retired in Gate 6; the orchestrator layout is always active.

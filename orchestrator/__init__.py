@@ -1,14 +1,5 @@
-"""Orchestrator package surface for UI shell scaffolding."""
+"""Compatibility shim for legacy import orchestrator usage."""
 
-from . import drive_share, email_automatic, email_manual, multi_mode
-from .ui_shell import LEGACY_FLAG, build_ui, is_legacy_enabled
+from simple_mailer._compat import bridge as _bridge
 
-__all__ = [
-    "drive_share",
-    "email_automatic",
-    "email_manual",
-    "multi_mode",
-    "LEGACY_FLAG",
-    "build_ui",
-    "is_legacy_enabled",
-]
+_bridge(__name__, 'simple_mailer.orchestrator')

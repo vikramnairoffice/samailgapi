@@ -1,33 +1,36 @@
-Architecture v2 Refactor Plan (Colab runtime)
+Architecture v2 Completion Plan (Colab runtime)
 
-This plan highlights sequential gates and the parallel lanes available once a gate is cleared. See task.md for detailed tickets and ownership.
+Overview
+- Objective: finish migration to the modular package described in docs/ARCHITECTURE_V2.md while keeping current behaviour intact.
+- Scope: restructure packaging, add legacy adapter bridges, switch the UI entrypoint, relocate remaining core utilities, consolidate credential loaders, and refresh docs/tests.
+- Guardrails: keep parity suites green after each milestone and document any temporary gaps in docs/Known_Issues.md before proceeding.
 
-Gate 0 - Guardrails & Snapshots (blocking)
-- Extend parity tests for send/content/invoice/headers/delay/randomizer before touching runtime code.
-- Capture Gardio blueprint exports and UI snapshots for manual, automatic, drive, and multi-mode layouts. All later work depends on this gate being green.
-- Design the optional live-token smoke harness so implementation can begin once adapters land.
+Milestones
+1. Package Skeleton & Legacy Stubs
+   - Create the `simple_mailer/` package with orchestrator, ui_modes, adapters, core, credentials, senders, exec subpackages mirroring docs/ARCHITECTURE_V2.md.
+   - Provide import shims so existing scripts (ui.py, mailer.py, manual_mode.py) continue to work during the migration.
+   - Update setup.py packaging metadata and adjust tests to import from the new namespace.
 
-Gate 1 - Adapter Layer (no behaviour change; lanes may run in parallel after Gate 0)
-- Lane A - Data/content adapters: extract leads_csv, leads_txt, spintax/tag helpers, attachments, invoice facades.
-- Lane B - Sending/execution adapters: wrap Gmail REST + SMTP paths, extract threadpool executor, add serial baseline.
-- Lane C - Manual mode facade: expose ManualConfig helpers, previews, attachment conversions.
-- Keep legacy entry points; each adapter stays behind feature flags until it passes the guard suite.
+2. Adapter Bridge & Wiring Cleanup
+   - Implement adapters/legacy_mailer.py and adapters/legacy_manual_mode.py to proxy through existing implementations (retired in G7-T6 once parity confirmed).
+   - Route orchestrator and manual mode modules through the adapters and retire direct calls once parity is confirmed.
+   - Capture any behavioural drift in docs/FEATURE_GUARD.md and Known_Issues.md.
 
-Gate 2 - UI Orchestrator Decomposition (depends on the adapters each mode needs)
-- Build ui_shell scaffold with feature flag to flip between legacy and v2 instantly.
-- Migrate modes in order: email_manual -> email_automatic (HTML/Invoice) -> drive_share (manual + automatic) -> multi_mode (including Drive multi mode).
+3. UI Entry Migration
+   - Update ui.py to mount simple_mailer.orchestrator.ui_shell.build_ui behind a feature flag with legacy fallback.
+   - Keep snapshots and Gardio blueprints in sync while verifying the new entrypoint via tests.
 
-Gate 3 - Credentials Harmonisation (may start alongside late Gate 1 items once guardrails exist)
-- Add OAuth in-memory token flow sharing validators across token_json and app_password loaders.
-- Update UI copy to remind users that a single consent covers Gmail + Drive scopes.
+4. Core Utility Relocation
+   - Move html_randomizer.py, html_renderer.py, header helpers, and throttling logic into simple_mailer/core.
+   - Update content, mailer, and manual modules to consume the relocated utilities and refresh affected tests.
 
-Gate 4 - Feature Integration Guarding (after Gates 1-3 for the relevant surfaces)
-- Run integrated parity suite (send + drive) with adapters active; document any temporary gaps in Known_Issues.md.
-- Implement the optional live-token smoke test that sends and retrieves via Gmail API when creds are supplied.
+5. Credential Module Consolidation
+   - Extract token_json and app_password helpers into simple_mailer/credentials alongside oauth_json and validation.
+   - Harmonise ui_token_helpers and mailer credential loaders to use the adapter surface.
 
-Gate 5 - Execution Strategy (optional, after Gate 1 extraction)
-- Add async executor behind feature flag; keep threadpool default until async path meets parity expectations.
+6. Docs, Tests, and Cleanup
+   - Refresh README, docs/INTERFACES.md, docs/FEATURE_GUARD.md, and packaging notes to reflect the new structure.
+   - Update task.md statuses, run the full pytest suite, and remove obsolete legacy wiring once adapters fully replace direct calls.
 
-Gate 6 - Cleanup & Documentation
-- Retire duplicated legacy wiring once adapters are the single integration surface and guard suites are green.
-- Update docs, Gardio blueprint annotations, fixtures, and feature flags at each milestone before closing this gate.
+Optional Follow-up
+- Revisit Gate 5 async executor once the modular architecture is live and parity-verified.

@@ -1,3 +1,5 @@
-﻿"""Send path adapter package."""
+"""Compatibility shim for legacy import senders usage."""
 
-__all__ = ["gmail_rest", "gmail_smtp"]
+from simple_mailer._compat import bridge as _bridge
+
+_bridge(__name__, 'simple_mailer.senders')

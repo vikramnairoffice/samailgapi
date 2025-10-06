@@ -1,5 +1,5 @@
 ﻿import mailer
-from core import leads_txt, leads_csv
+from simple_mailer.core import leads_txt, leads_csv
 
 
 def test_leads_txt_matches_legacy_reader(tmp_path):

@@ -3,8 +3,8 @@ import time
 
 import pytest
 
-from exec.threadpool import ThreadPoolExecutor
-from exec.serial import SerialExecutor
+from simple_mailer.exec.threadpool import ThreadPoolExecutor
+from simple_mailer.exec.serial import SerialExecutor
 
 
 def test_threadpool_stream_collects_results() -> None:

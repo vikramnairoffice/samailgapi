@@ -37,7 +37,7 @@ def test_run_campaign_emits_one_event_per_lead(monkeypatch: pytest.MonkeyPatch) 
         return True, "ok"
 
     monkeypatch.setattr(mailer, "send_single_email", fake_sender)
-    monkeypatch.setattr(mailer.time, "sleep", lambda _: None)
+    monkeypatch.setattr(mailer, "sleep", lambda _: None)
 
     config = {
         "content_template": "own_proven",
@@ -68,7 +68,7 @@ def test_run_campaign_uses_distinct_worker_threads(monkeypatch: pytest.MonkeyPat
         return True, "ok"
 
     monkeypatch.setattr(mailer, "send_single_email", fake_sender)
-    monkeypatch.setattr(mailer.time, "sleep", lambda _: None)
+    monkeypatch.setattr(mailer, "sleep", lambda _: None)
 
     config = {
         "content_template": "own_proven",

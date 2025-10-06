@@ -17,11 +17,11 @@ Ship an opt-in Colab harness that proves Gmail send + inbox retrieval + Drive sh
 4. Run live harness manually with staging token and capture artefacts for docs.
 
 ## Implementation Tasks
-- [ ] Build Gmail send helper using existing adapter entry point with optional dry-run logging.
-- [ ] Add inbox poller with timeout + retry for matching `X-Ref` header; expose configurable max wait.
-- [ ] Create Drive share helper targeting invoice fixture; verify permission role = `reader`.
-- [ ] Wire harness runner that sequences send -> poll -> share -> cleanup (conditional) with structured logging.
-- [ ] Document opt-in flow and troubleshooting in README + Known_Issues if needed.
+- [x] Build Gmail send helper using existing adapter entry point with optional dry-run logging.
+- [x] Add inbox poller with timeout + retry for matching `X-Ref` header; expose configurable max wait.
+- [x] Create Drive share helper targeting invoice fixture; verify permission role = `reader`.
+- [x] Wire harness runner that sequences send -> poll -> share -> cleanup (conditional) with structured logging.
+- [x] Document opt-in flow and troubleshooting in README + Known_Issues if needed.
 
 ## Open Questions
 - What mailbox/address should receive the smoke message?
