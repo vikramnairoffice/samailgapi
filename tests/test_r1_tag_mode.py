@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from content import (
+from simple_mailer.content import (
     R1_DELIMITER,
     R1_KEYWORD_CHOICES,
     R1_PREFIX_CHOICES,

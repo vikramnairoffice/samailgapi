@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-import mailer
+from simple_mailer import mailer
 import simple_mailer.credentials.app_password as credential_app_password
 
 

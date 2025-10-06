@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover - optional dependency
     DOCX_AVAILABLE = False
     Document = None  # type: ignore
 
-from content import expand_spintax, render_tagged_content, generate_sender_name
+from simple_mailer.content import expand_spintax, render_tagged_content, generate_sender_name
 
 from simple_mailer.core.html_randomizer import randomize_html
 from simple_mailer.core.html_renderer import html_renderer, PlaywrightUnavailable

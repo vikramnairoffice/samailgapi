@@ -1,10 +1,10 @@
-﻿"""SMTP adapter for Gmail app password flows."""
+"""SMTP adapter for Gmail app password flows."""
 
 from __future__ import annotations
 
 from typing import Any, Mapping
 
-import mailer
+from simple_mailer import mailer
 
 
 def _normalise_headers(headers: Mapping[str, Any] | None) -> tuple[bool, bool, str]:

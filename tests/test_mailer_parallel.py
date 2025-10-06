@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-import mailer
+from simple_mailer import mailer
 
 
 class _FakeInvoiceGen:

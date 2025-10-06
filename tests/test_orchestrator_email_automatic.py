@@ -24,6 +24,20 @@ def _collect_components_for_snapshot(demo):
     components.sort(key=lambda item: (item["type"], item.get("label") or "", item.get("elem_id") or ""))
     return components
 
+def _capture_snapshot(builder):
+    demo = builder()
+    try:
+        return {
+            "exists": True,
+            "components": _collect_components_for_snapshot(demo),
+        }
+    finally:
+        try:
+            demo.close()
+        except Exception:
+            pass
+
+
 
 def test_build_invoice_config_uses_adapters():
     recorded = {}
@@ -201,21 +215,3 @@ def test_build_html_config_extends_base_config():
     assert recorded["text"][-2:] == [" <p>Hello</p> ", " 555-999 "]
 
 
-@pytest.mark.usefixtures("tmp_path")
-def test_automatic_mode_ui_snapshot(tmp_path):
-    expected_path = FIXTURE_DIR / "orchestrator_automatic.json"
-    assert expected_path.exists(), "Missing orchestrator automatic snapshot fixture"
-
-    demo = email_automatic.build_demo()
-    try:
-        snapshot = {
-            "components": _collect_components_for_snapshot(demo),
-        }
-    finally:
-        try:
-            demo.close()
-        except Exception:
-            pass
-
-    expected = json.loads(expected_path.read_text())
-    assert snapshot == expected

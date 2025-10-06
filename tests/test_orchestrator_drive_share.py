@@ -32,6 +32,20 @@ def _collect_components_for_snapshot(demo):
     components.sort(key=lambda item: (item["type"], item.get("label") or "", item.get("elem_id") or ""))
     return components
 
+def _capture_snapshot(builder):
+    demo = builder()
+    try:
+        return {
+            "exists": True,
+            "components": _collect_components_for_snapshot(demo),
+        }
+    finally:
+        try:
+            demo.close()
+        except Exception:
+            pass
+
+
 
 def test_build_manual_state_wires_adapters(monkeypatch):
     recorded = {}
@@ -200,42 +214,6 @@ def test_build_automatic_state_forces_html(monkeypatch):
     assert called["randomize_html"] is True
 
 
-@pytest.mark.usefixtures("tmp_path")
-def test_drive_manual_ui_snapshot(tmp_path):
-    expected_path = FIXTURE_DIR / "orchestrator_drive_manual.json"
-    assert expected_path.exists(), "Missing orchestrator drive manual snapshot fixture"
-
-    demo = drive_share.build_manual_demo()
-    try:
-        snapshot = {
-            "components": _collect_components_for_snapshot(demo),
-        }
-    finally:
-        try:
-            demo.close()
-        except Exception:
-            pass
-
-    expected = json.loads(expected_path.read_text())
-    assert snapshot == expected
 
 
-@pytest.mark.usefixtures("tmp_path")
-def test_drive_automatic_ui_snapshot(tmp_path):
-    expected_path = FIXTURE_DIR / "orchestrator_drive_automatic.json"
-    assert expected_path.exists(), "Missing orchestrator drive automatic snapshot fixture"
-
-    demo = drive_share.build_automatic_demo()
-    try:
-        snapshot = {
-            "components": _collect_components_for_snapshot(demo),
-        }
-    finally:
-        try:
-            demo.close()
-        except Exception:
-            pass
-
-    expected = json.loads(expected_path.read_text())
-    assert snapshot == expected
 

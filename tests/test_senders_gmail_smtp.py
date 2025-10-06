@@ -1,6 +1,6 @@
-﻿import pytest
+import pytest
 
-import mailer
+from simple_mailer import mailer
 
 from simple_mailer.senders import gmail_smtp
 

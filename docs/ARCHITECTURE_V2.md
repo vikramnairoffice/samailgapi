@@ -1,4 +1,4 @@
-﻿# Architecture v2 (Modular, Adapter-Backed)
+# Architecture v2 (Modular, Adapter-Backed)
 
 Runtime: Google Colab only. The goal is to modularize while reusing today’s engine/UI components through adapters so we preserve behaviour until every guardrail passes.
 
@@ -10,7 +10,7 @@ simple_mailer/
   orchestrator/
     __init__.py
     ui_shell.py                # orchestrator entrypoint exposing adapter-backed modes
-    modes.py                   # registry for modes + feature flags
+    modes.py                   # registry for orchestrator modes
     adapters.py                # shims forwarding to existing UI components until replaced
   ui_modes/
     email_manual.py            # wraps current manual widgets
@@ -72,7 +72,7 @@ Notes
 - Placeholder behaviour, randomization seeds, and throttling semantics must match the current production path.
 - Legacy TXT leads remain supported via adapters even after CSV becomes primary.
 - Deterministic seeds are routed through adapters to guarantee identical outputs for guard tests.
-- Any new module must provide a backwards-compatible façade before callers switch (for example, module-level shims such as mailer.py or content.py).
+- Legacy module-level shims have been removed; callers import directly from the `simple_mailer.*` namespace once parity is proven.
 
 ## File Size Guidance
 

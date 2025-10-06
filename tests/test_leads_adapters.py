@@ -1,4 +1,4 @@
-﻿import mailer
+from simple_mailer import mailer
 from simple_mailer.core import leads_txt, leads_csv
 
 

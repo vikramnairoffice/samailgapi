@@ -3,18 +3,17 @@ from pathlib import Path
 
 import pytest
 
-import ui
+from simple_mailer.orchestrator import drive_share, email_automatic, email_manual, multi_mode
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "ui_snapshots"
 
-
-def _is_descendant(component, ancestor):
-    parent = getattr(component, "parent", None)
-    while parent is not None:
-        if parent is ancestor:
-            return True
-        parent = getattr(parent, "parent", None)
-    return False
+_MODE_BUILDERS = {
+    "email_manual": ("orchestrator_manual.json", email_manual.build_demo),
+    "email_automatic": ("orchestrator_automatic.json", email_automatic.build_demo),
+    "drive_manual": ("orchestrator_drive_manual.json", drive_share.build_manual_demo),
+    "drive_automatic": ("orchestrator_drive_automatic.json", drive_share.build_automatic_demo),
+    "multi_mode": ("orchestrator_multi.json", multi_mode.build_demo),
+}
 
 
 def _component_signature(component):
@@ -25,71 +24,17 @@ def _component_signature(component):
     }
 
 
-def _collect_components(demo, root):
-    collected = []
-    for component in demo.blocks.values():
-        if component is root:
-            continue
-        if _is_descendant(component, root):
+def _capture_snapshot(builder):
+    demo = builder()
+    try:
+        collected = []
+        for component in demo.blocks.values():
             label = getattr(component, "label", None)
             elem_id = getattr(component, "elem_id", None)
             if label or elem_id:
                 collected.append(_component_signature(component))
-    collected.sort(key=lambda item: (item["type"], item.get("label") or "", item.get("elem_id") or ""))
-    return collected
-
-
-def _find_tab(blocks, predicate):
-    for component in blocks:
-        if predicate(component):
-            return component
-    return None
-
-
-def _capture_mode_snapshot(mode):
-    demo = ui.gradio_ui()
-    try:
-        blocks = list(demo.blocks.values())
-        if mode in {"manual", "automatic"}:
-            mode_tabs = _find_tab(
-                blocks,
-                lambda comp: type(comp).__name__ == "Tabs" and getattr(comp, "elem_id", None) == "mode-tabs",
-            )
-            if mode_tabs is None:
-                return {"exists": False, "reason": "mode-tabs not found"}
-            target_tab = _find_tab(
-                mode_tabs.children,
-                lambda tab: getattr(tab, "label", None) == ("Manual" if mode == "manual" else "Automatic"),
-            )
-            if target_tab is None:
-                return {"exists": False, "reason": f"{mode} tab missing"}
-            return {
-                "exists": True,
-                "components": _collect_components(demo, target_tab),
-            }
-        if mode == "multi":
-            target_tab = _find_tab(
-                blocks,
-                lambda comp: type(comp).__name__ == "Tab" and getattr(comp, "label", None) == "Multi Mode",
-            )
-            if target_tab is None:
-                return {"exists": False, "reason": "Multi Mode tab missing"}
-            return {
-                "exists": True,
-                "components": _collect_components(demo, target_tab),
-            }
-        if mode == "drive":
-            drive_tab = _find_tab(
-                blocks,
-                lambda comp: (getattr(comp, "label", None) or "").lower().startswith("drive"),
-            )
-            if drive_tab is None:
-                return {"exists": False, "reason": "Drive mode not present"}
-            return {
-                "exists": True,
-                "components": _collect_components(demo, drive_tab),
-            }
-        return {"exists": False, "reason": f"Unhandled mode: {mode}"}
+        collected.sort(key=lambda item: (item["type"], item.get("label") or "", item.get("elem_id") or ""))
+        return {"exists": True, "components": collected}
     finally:
         try:
             demo.close()
@@ -97,11 +42,12 @@ def _capture_mode_snapshot(mode):
             pass
 
 
-@pytest.mark.parametrize("mode", ["manual", "automatic", "drive", "multi"])
+@pytest.mark.parametrize("mode", sorted(_MODE_BUILDERS))
 def test_ui_mode_snapshot_matches_baseline(mode):
-    expected_path = FIXTURE_DIR / f"{mode}.json"
+    fixture_name, builder = _MODE_BUILDERS[mode]
+    expected_path = FIXTURE_DIR / fixture_name
     assert expected_path.exists(), f"Missing UI snapshot fixture for {mode}"
     expected_snapshot = json.loads(expected_path.read_text())
-    actual_snapshot = _capture_mode_snapshot(mode)
+    actual_snapshot = _capture_snapshot(builder)
     assert actual_snapshot == expected_snapshot, f"Snapshot for {mode} diverged from baseline"
 

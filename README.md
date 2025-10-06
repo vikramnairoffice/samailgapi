@@ -1,4 +1,4 @@
-﻿# Simple Gmail REST Mailer
+# Simple Gmail REST Mailer
 
 Token-first Gmail sender with a Gradio dashboard, personalized invoice generation, and a Colab-friendly workflow. Upload OAuth token JSON files, tune email content, and monitor progress from the browser or a notebook.
 
@@ -15,7 +15,7 @@ Token-first Gmail sender with a Gradio dashboard, personalized invoice generatio
 ```bash
 # clone or download the repository, then
 pip install -r requirements.txt
-python ui.py
+python -m simple_mailer.ui
 ```
 
 ### Pip install the Git repo
@@ -27,8 +27,8 @@ Replace `vikramnairoffice/samailgapi` with the repository slug. For private repo
 
 After installation you can:
 ```python
-from mailer import campaign_events
-from ui import main  # launches the Gradio dashboard
+from simple_mailer import mailer
+from simple_mailer import ui  # launches the Gradio dashboard
 ```
 
 ## Google Colab quick start
@@ -41,12 +41,12 @@ from ui import main  # launches the Gradio dashboard
 2. **Launch a UI**
    - Option A - run the packaged Gradio app:
      ```python
-     from ui import main
-     main()  # opens Gradio in Colab output
+     from simple_mailer import ui
+     ui.main()  # opens Gradio in Colab output
      ```
    - Option B - call the bootstrap helper:
      ```python
-     import colab_setup
+     from simple_mailer import colab_setup
      colab_setup.install_packages()
      colab_setup.create_directories()
      colab_setup.launch_app()
@@ -60,14 +60,15 @@ from ui import main  # launches the Gradio dashboard
 
 ## Project layout
 ```
-ui.py               # Gradio dashboard
-ui_token_helpers.py # Bridges UI events to the mailer generator
-mailer.py           # Gmail REST workflow + token/lead orchestration
-invoice.py          # Invoice generator (PDF, PNG, HEIF)
-content.py          # Subject/body templates and sender name helpers
-colab_setup.py      # Bootstrap helper for Colab/notebook runs
-requirements.txt    # Runtime dependencies
-setup.py            # Packaging configuration
+simple_mailer/
+  ui.py               # Gradio dashboard entry point
+  ui_token_helpers.py # Bridges UI events to the mailer generator
+  mailer.py           # Gmail REST workflow + token/lead orchestration
+  invoice.py          # Invoice generator (PDF, PNG, HEIF)
+  content.py          # Subject/body templates and sender name helpers
+  colab_setup.py      # Bootstrap helper for Colab/notebook runs
+requirements.txt      # Runtime dependencies
+setup.py              # Packaging configuration
 ```
 
 ## Snapshot Baselines
@@ -76,7 +77,7 @@ setup.py            # Packaging configuration
 - Run `python -m pytest tests/test_gardio_ui.py tests/test_ui_snapshots.py` after UI tweaks to confirm the guardrails stay green.
 
 ## Development tips
-- `python colab_setup.py` on a workstation installs notebook extras and launches the UI.
+- `python -m simple_mailer.colab_setup` on a workstation installs notebook extras and launches the UI.
 - Use the console script after installation: `simple-mailer`.
 - Keep runtime assets (logos, prebuilt attachments, tokens) out of version control; they are covered in `.gitignore`.
 
@@ -90,4 +91,6 @@ setup.py            # Packaging configuration
 
 ## License
 MIT - for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.
+
+
 

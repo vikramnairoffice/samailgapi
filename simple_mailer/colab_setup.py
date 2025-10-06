@@ -78,7 +78,7 @@ def launch_app():
     print("\nLaunching the Simple Gmail REST Mailer UI...")
     print("=" * 50)
     try:
-        import ui
+        from . import ui
 
         ui.main()
     except ImportError:

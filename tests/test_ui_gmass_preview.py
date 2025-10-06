@@ -1,8 +1,9 @@
 import itertools
 
 import pytest
-import ui
-import ui_token_helpers as helpers
+from simple_mailer import ui_token_helpers as helpers
+
+from simple_mailer.orchestrator import email_automatic
 
 
 def test_build_gmass_preview_returns_urls(monkeypatch):
@@ -42,7 +43,6 @@ def test_build_gmass_preview_handles_no_accounts(monkeypatch):
 
 
 def test_build_gmass_preview_non_gmass_mode(monkeypatch):
-    # load_accounts should not be called when mode is not GMass
     called = {'value': False}
 
     def fake_loader(token_files, auth_mode='oauth'):
@@ -68,7 +68,6 @@ def test_gmass_rows_to_markdown_generates_links():
         '- [niao78@gmail.com](https://www.gmass.co/inbox?q=niao78)\n'
         '- [first.last+tag@example.com](https://www.gmass.co/inbox?q=first.last%2Btag)'
     )
-
 
 
 def test_start_campaign_appends_gmass_preview(monkeypatch):
@@ -151,17 +150,6 @@ def test_start_campaign_leads_mode_has_empty_preview(monkeypatch):
 
 
 
-
-
-def _is_descendant(component, ancestor):
-    parent = getattr(component, 'parent', None)
-    while parent is not None:
-        if parent is ancestor:
-            return True
-        parent = getattr(parent, 'parent', None)
-    return False
-
-
 def _collect_parent_labels(component):
     labels = []
     parent = getattr(component, 'parent', None)
@@ -171,27 +159,27 @@ def _collect_parent_labels(component):
     return labels
 
 
-def test_automatic_mode_has_deliverability_preview_section():
-    demo = ui.gradio_ui()
-    blocks = list(demo.blocks.values())
-    mode_tabs = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'Tabs' and getattr(comp, 'elem_id', None) == 'mode-tabs'
-    )
-    automatic_tab = next(child for child in mode_tabs.children if child.label == 'Automatic')
-    preview_accordion = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'Accordion'
-        and getattr(comp, 'label', None) == 'GMass Deliverability Preview'
-        and _is_descendant(comp, automatic_tab)
-    )
-    assert preview_accordion.label == 'GMass Deliverability Preview'
+def test_automatic_demo_has_deliverability_preview_section():
+    demo = email_automatic.build_demo()
+    try:
+        components = list(demo.blocks.values())
+        accordion = next(
+            comp for comp in components
+            if comp.__class__.__name__ == 'Accordion'
+            and getattr(comp, 'label', None) == 'GMass Deliverability Preview'
+        )
+        assert accordion.label == 'GMass Deliverability Preview'
+    finally:
+        demo.close()
 
 
 def test_gmass_preview_widgets_within_preview_group():
-    demo = ui.gradio_ui()
-    gmass_status = next(comp for comp in demo.blocks.values() if getattr(comp, 'label', None) == 'GMass Status')
-    labels = _collect_parent_labels(gmass_status)
-    assert 'Automatic' in labels
-    assert 'GMass Deliverability Preview' in labels
+    demo = email_automatic.build_demo()
+    try:
+        components = list(demo.blocks.values())
+        gmass_status = next(comp for comp in components if getattr(comp, 'label', None) == 'GMass Status')
+        labels = _collect_parent_labels(gmass_status)
+        assert 'GMass Deliverability Preview' in labels
+    finally:
+        demo.close()
 

@@ -1,12 +1,14 @@
 ﻿"""Orchestrator package surface for UI shell scaffolding."""
 
-from . import drive_share, email_automatic, email_manual, multi_mode
+from . import email_manual, email_automatic, drive_share, multi_mode, modes
 from .ui_shell import build_ui
 
 __all__ = [
-    "drive_share",
-    "email_automatic",
     "email_manual",
+    "email_automatic",
+    "drive_share",
     "multi_mode",
+    "modes",
     "build_ui",
 ]
+

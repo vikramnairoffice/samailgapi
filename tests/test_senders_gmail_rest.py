@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-import mailer
+from simple_mailer import mailer
 import pytest
 
 from simple_mailer.senders import gmail_rest

@@ -7,7 +7,8 @@ from typing import Callable, Optional
 
 import gradio as gr
 
-from content import DEFAULT_SENDER_NAME_TYPE, SENDER_NAME_TYPES
+from . import modes
+from simple_mailer.content import DEFAULT_SENDER_NAME_TYPE, SENDER_NAME_TYPES
 
 _TEMPLATE_DISPLAY_CHOICES = ("own_proven", "Own_last", "R1_Tag")
 _TEMPLATE_ALIAS_MAP = {
@@ -413,6 +414,20 @@ def build_demo(adapters: Optional[AutomaticModeAdapters] = None) -> gr.Blocks:
     return demo
 
 
+MODE_EMAIL_AUTOMATIC = modes.Mode(
+    id='email_automatic',
+    title='Email Automatic',
+    build_ui=build_demo,
+    to_runner_config=lambda payload, adapters=None: payload,
+    run=lambda config, adapters=None: iter(()),
+)
+
+MODES = {
+    'email_automatic': MODE_EMAIL_AUTOMATIC,
+}
+
+modes.register_mode(MODE_EMAIL_AUTOMATIC)
+
 __all__ = [
     "AutomaticConfig",
     "AutomaticInvoiceConfig",
@@ -421,4 +436,5 @@ __all__ = [
     "build_invoice_config",
     "build_html_config",
     "build_demo",
+    "MODES",
 ]

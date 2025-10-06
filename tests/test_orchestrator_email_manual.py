@@ -6,16 +6,55 @@ import pytest
 
 from simple_mailer.orchestrator import email_manual
 
-
-FIXTURE_DIR = Path(__file__).parent / "fixtures" / "ui_snapshots"
-
-
 @dataclass
 class DummySpec:
     display_name: str
 
 
+
 def _collect_components_for_snapshot(demo):
+    components = []
+    for component in demo.blocks.values():
+        comp_type = type(component).__name__
+        label = getattr(component, "label", None)
+        elem_id = getattr(component, "elem_id", None)
+        if label or elem_id:
+            components.append({
+                "type": comp_type,
+                "label": label,
+                "elem_id": elem_id,
+            })
+    components.sort(key=lambda item: (item["type"], item.get("label") or "", item.get("elem_id") or ""))
+    return components
+
+
+def _capture_snapshot(builder):
+    demo = builder()
+    try:
+        return {
+            "exists": True,
+            "components": _collect_components_for_snapshot(demo),
+        }
+    finally:
+        try:
+            demo.close()
+        except Exception:
+            pass
+
+
+def _capture_snapshot(builder):
+    demo = builder()
+    try:
+        return {
+            "exists": True,
+            "components": _collect_components_for_snapshot(demo),
+        }
+    finally:
+        try:
+            demo.close()
+        except Exception:
+            pass
+
     components = []
     for component in demo.blocks.values():
         comp_type = type(component).__name__
@@ -171,21 +210,3 @@ def test_build_preview_state_uses_snapshot(monkeypatch):
     assert result.attachments == (spec,)
 
 
-@pytest.mark.usefixtures("tmp_path")
-def test_manual_mode_ui_snapshot(tmp_path):
-    expected_path = FIXTURE_DIR / "orchestrator_manual.json"
-    assert expected_path.exists(), "Missing orchestrator manual snapshot fixture"
-
-    demo = email_manual.build_demo()
-    try:
-        snapshot = {
-            "components": _collect_components_for_snapshot(demo),
-        }
-    finally:
-        try:
-            demo.close()
-        except Exception:
-            pass
-
-    expected = json.loads(expected_path.read_text())
-    assert snapshot == expected

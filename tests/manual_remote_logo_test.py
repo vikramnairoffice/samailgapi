@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from invoice import InvoiceGenerator, REMOTE_LOGO_CACHE_DIR, REMOTE_LOGO_URLS
+from simple_mailer.invoice import InvoiceGenerator, REMOTE_LOGO_CACHE_DIR, REMOTE_LOGO_URLS
 
 RECIPIENT = "remote.logo.test@example.com"
 PHONE_NUMBERS = "800-555-0100\n800-555-0199"

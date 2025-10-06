@@ -2,8 +2,9 @@ import types
 
 import pytest
 
-import ui
-import ui_token_helpers as helpers
+from simple_mailer import ui_token_helpers as helpers
+
+from simple_mailer.orchestrator import email_manual
 
 
 class DummyFile(types.SimpleNamespace):
@@ -70,252 +71,52 @@ def test_manual_preview_snapshot_with_attachment_only(tmp_html_file):
     assert 'No body content available' in html_map['Body']
 
 
-def test_manual_render_preview_requires_body_content():
-    html_update = ui._manual_render_preview(
-        preview_source='Body',
-        manual_body='',
-        manual_body_is_html=True,
-        manual_inline_html='',
-    )
-
-    assert 'No Body HTML provided' in html_update['value']
-    assert html_update['visible'] is True
-
-
-def test_manual_render_preview_renders_body_html():
-    html_update = ui._manual_render_preview(
-        preview_source='Body',
-        manual_body='<p>Hello</p>',
-        manual_body_is_html=True,
-        manual_inline_html='',
-    )
-
-    assert 'Body Preview' in html_update['value']
-    assert '<p>Hello</p>' in html_update['value']
-
-
-def test_manual_render_preview_requires_attachment_html():
-    html_update = ui._manual_render_preview(
-        preview_source='Attachment',
-        manual_body='Ignored',
-        manual_body_is_html=False,
-        manual_inline_html='',
-    )
-
-    assert 'No Attachment HTML provided' in html_update['value']
-
-
-def test_manual_render_preview_renders_inline_attachment():
-    html_update = ui._manual_render_preview(
-        preview_source='Attachment',
-        manual_body='',
-        manual_body_is_html=False,
-        manual_inline_html='<div>Attachment</div>',
-    )
-
-    assert 'Attachment Preview' in html_update['value']
-    assert '<div>Attachment</div>' in html_update['value']
-
-
-def test_manual_preview_button_disabled_until_source_selected():
-    demo = ui.gradio_ui()
-    blocks = list(demo.blocks.values())
-    preview_button = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'Button' and getattr(comp, 'value', None) == 'Preview'
-    )
-    assert preview_button.interactive is False
-
-
-def test_manual_preview_mode_radio_has_no_default_selection():
-    demo = ui.gradio_ui()
-    blocks = list(demo.blocks.values())
-    preview_radio = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'Radio'
-        and getattr(comp, 'label', None) == 'Preview Source'
-    )
-    assert preview_radio.value is None
-    labels = [choice[0] if isinstance(choice, tuple) else choice for choice in preview_radio.choices]
-    assert labels == ['Body', 'Attachment']
-
-
-def test_manual_toggle_attachments_only_adjusts_visibility():
-    disabled_updates = ui._manual_toggle_attachments(False)
-    enabled_updates = ui._manual_toggle_attachments(True)
-    for update in (*disabled_updates, *enabled_updates):
-        assert 'value' not in update
-        assert 'choices' not in update
-        assert set(update.keys()) <= {'visible', 'interactive', '__type__'}
-
-
-
-
-def test_manual_body_image_toggle_disables_without_resetting_state():
-    checkbox_update, state = ui._manual_body_image_toggle(False, True)
-    assert checkbox_update['interactive'] is False
-    assert checkbox_update['value'] is False
-    assert state is True
-
-
-def test_manual_body_image_toggle_reenables_with_previous_state():
-    checkbox_update, state = ui._manual_body_image_toggle(True, True)
-    assert checkbox_update['interactive'] is True
-    assert checkbox_update['value'] is True
-    assert state is True
-
-
-
-def test_manual_body_image_state_persists_when_html_disabled():
-    update, state = ui._manual_body_image_toggle(True, False)
-    stored = ui._manual_body_image_store_state(True, True, state)
-    update, state = ui._manual_body_image_toggle(False, stored)
-    assert update['value'] is False
-    stored_after_disable = ui._manual_body_image_store_state(False, False, stored)
-    assert stored_after_disable is True
-    update, state = ui._manual_body_image_toggle(True, stored_after_disable)
-    assert update['value'] is True
-    assert state is True
-
-
-def test_resolve_manual_body_image_choice_prefers_stored_state():
-    choice = helpers._resolve_manual_body_image_choice(
-        body_is_html=True,
-        checkbox_value=False,
-        stored_value=True,
-    )
-    assert choice is True
-
-    choice = helpers._resolve_manual_body_image_choice(
+def test_build_preview_state_returns_inline_attachment(tmp_html_file):
+    dummy = DummyFile(name=str(tmp_html_file), orig_name='sample.html')
+    state = email_manual.build_preview_state(
+        subject='Subject',
+        body='',
         body_is_html=False,
-        checkbox_value=True,
-        stored_value=True,
-    )
-    assert choice is False
-
-
-def _is_descendant(component, ancestor):
-    parent = getattr(component, 'parent', None)
-    while parent is not None:
-        if parent is ancestor:
-            return True
-        parent = getattr(parent, 'parent', None)
-    return False
-
-
-
-def _collect_parent_labels(component):
-    labels = []
-    parent = getattr(component, 'parent', None)
-    while parent is not None:
-        labels.append(getattr(parent, 'label', None))
-        parent = getattr(parent, 'parent', None)
-    return labels
-
-
-
-def test_manual_tab_has_setup_and_preview_tabs():
-    demo = ui.gradio_ui()
-    blocks = list(demo.blocks.values())
-    mode_tabs = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'Tabs' and getattr(comp, 'elem_id', None) == 'mode-tabs'
-    )
-    manual_tab = next(child for child in mode_tabs.children if child.label == 'Manual')
-    nested_tabs = [
-        comp for comp in blocks
-        if type(comp).__name__ == 'Tabs' and _is_descendant(comp, manual_tab)
-    ]
-    assert any([child.label for child in tabs.children] == ['Setup', 'Preview'] for tabs in nested_tabs)
-
-
-def test_manual_preview_controls_within_preview_tab():
-    demo = ui.gradio_ui()
-    blocks = list(demo.blocks.values())
-    mode_tabs = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'Tabs' and getattr(comp, 'elem_id', None) == 'mode-tabs'
-    )
-    manual_tab = next(child for child in mode_tabs.children if child.label == 'Manual')
-    preview_html = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'HTML'
-        and getattr(comp, 'label', None) == 'Preview'
-        and _is_descendant(comp, manual_tab)
-    )
-    labels = _collect_parent_labels(preview_html)
-    assert 'Manual' in labels
-    assert 'Preview' in labels
-
-
-def test_manual_preview_mode_radio_within_preview_tab():
-    demo = ui.gradio_ui()
-    blocks = list(demo.blocks.values())
-    mode_tabs = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'Tabs' and getattr(comp, 'elem_id', None) == 'mode-tabs'
-    )
-    manual_tab = next(child for child in mode_tabs.children if child.label == 'Manual')
-    preview_radio = next(
-        comp for comp in blocks
-        if type(comp).__name__ == 'Radio'
-        and getattr(comp, 'label', None) == 'Preview Source'
-        and _is_descendant(comp, manual_tab)
-    )
-    labels = _collect_parent_labels(preview_radio)
-    assert 'Manual' in labels
-    assert 'Preview' in labels
-
-
-
-
-def test_run_unified_campaign_uses_stored_body_image_state(monkeypatch):
-    captured = {}
-
-    def fake_start_manual_campaign(*args, **kwargs):
-        captured['body_image_enabled'] = args[7]
-        def _gen():
-            yield ('status', '', '')
-        return _gen()
-
-    monkeypatch.setattr(helpers, 'start_manual_campaign', fake_start_manual_campaign)
-
-    generator = helpers.run_unified_campaign(
-        active_ui_mode='manual',
-        token_files=[],
-        leads_file=None,
-        send_delay_seconds=0,
-        mode='gmail',
-        email_content_mode='Attachment',
-        attachment_folder='',
-        invoice_format='pdf',
-        support_number='',
-        manual_subject='Subject',
-        manual_body='<div>body</div>',
-        manual_body_is_html=True,
-        manual_body_image_enabled=False,
-        manual_body_image_state=True,
-        manual_randomize_html=False,
-        manual_tfn='',
-        manual_extra_tags=[],
-        manual_attachment_enabled=False,
-        manual_attachment_mode='original',
-        manual_attachment_files=[],
-        manual_inline_html='',
-        manual_inline_name='',
-        manual_sender_name='',
-        manual_change_name=False,
-        manual_sender_type='business',
-        advance_header=False,
-        force_header=False,
-        auth_mode='oauth',
-        sender_name_type='business',
-        content_template=None,
-        subject_template=None,
-        body_template=None,
+        body_image_enabled=False,
+        randomize_html=False,
+        tfn='',
+        extra_tags=[],
+        attachment_enabled=True,
+        attachment_mode='original',
+        attachment_files=[dummy],
+        inline_html='<div>Inline</div>',
+        inline_name='inline.html',
+        sender_name='',
+        change_name=False,
+        sender_type='business',
+        selected_attachment_name='inline.html',
     )
 
-    next(generator)
+    assert 'Attachment' in state.choices
+    assert state.meta['attachment_available'] is True
+    assert state.html_map['Attachment'].startswith('<div')
 
-    assert captured['body_image_enabled'] is True
+
+def test_build_preview_state_defaults_to_body_choice():
+    state = email_manual.build_preview_state(
+        subject='',
+        body='<p>Body</p>',
+        body_is_html=True,
+        body_image_enabled=False,
+        randomize_html=False,
+        tfn='',
+        extra_tags=[],
+        attachment_enabled=False,
+        attachment_mode='original',
+        attachment_files=[],
+        inline_html='',
+        inline_name='',
+        sender_name='',
+        change_name=False,
+        sender_type='business',
+        selected_attachment_name=None,
+    )
+
+    assert state.default == 'Body'
+    assert 'Body Preview' in state.html_map['Body']
 

@@ -34,12 +34,6 @@ def read_readme():
 PACKAGES = find_packages(include=[
     'simple_mailer',
     'simple_mailer.*',
-    'core',
-    'credentials',
-    'exec',
-    'manual',
-    'orchestrator',
-    'senders',
 ])
 
 
@@ -54,12 +48,7 @@ setup(
     url='https://github.com/vikramnairoffice/simple-gmail-rest-mailer',
     packages=PACKAGES,
     py_modules=[
-        'ui',
-        'mailer',
-        'invoice',
-        'content',
-        'ui_token_helpers',
-        'colab_setup',
+        'manual_mode',
     ],
     install_requires=parse_requirements(),
     extras_require={
@@ -100,3 +89,5 @@ setup(
         'Documentation': 'https://github.com/vikramnairoffice/simple-gmail-rest-mailer/blob/main/README.md',
     },
 )
+
+

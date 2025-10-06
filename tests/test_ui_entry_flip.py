@@ -5,7 +5,7 @@ from simple_mailer.orchestrator import ui_shell
 from simple_mailer import ui
 
 
-FEATURE_FLAG = "SIMPLE_MAILER_UI_SHELL"
+LEGACY_FLAG = "SIMPLE_MAILER_UI_SHELL"
 
 
 def _make_sentinel(label):
@@ -18,25 +18,37 @@ def _make_sentinel(label):
 
 @pytest.fixture(autouse=True)
 def _reset_flag(monkeypatch):
-    monkeypatch.delenv(FEATURE_FLAG, raising=False)
+    monkeypatch.delenv(LEGACY_FLAG, raising=False)
 
 
-def test_gradio_ui_defaults_to_legacy_layout(monkeypatch):
+def test_gradio_ui_uses_orchestrator(monkeypatch):
     sentinel = _make_sentinel("orchestrator")
     monkeypatch.setattr(ui_shell, "build_ui", lambda: sentinel)
-
-    result = ui.gradio_ui()
-
-    assert result is not sentinel
-    assert isinstance(result, gr.Blocks)
-    result.close()
-
-
-def test_gradio_ui_uses_orchestrator_when_flag_set(monkeypatch):
-    sentinel = _make_sentinel("orchestrator")
-    monkeypatch.setattr(ui_shell, "build_ui", lambda: sentinel)
-    monkeypatch.setenv(FEATURE_FLAG, "1")
 
     result = ui.gradio_ui()
 
     assert result is sentinel
+
+
+def test_gradio_ui_ignores_legacy_flag(monkeypatch):
+    sentinel = _make_sentinel("flagged")
+    monkeypatch.setattr(ui_shell, "build_ui", lambda: sentinel)
+    monkeypatch.setenv(LEGACY_FLAG, "0")
+
+    result = ui.gradio_ui()
+
+    assert result is sentinel
+
+
+def test_main_launches_orchestrator(monkeypatch):
+    launch_calls = []
+
+    class _DummyBlocks:
+        def launch(self, *args, **kwargs):
+            launch_calls.append((args, kwargs))
+
+    monkeypatch.setattr(ui_shell, "build_ui", lambda: _DummyBlocks())
+
+    ui.main()
+
+    assert launch_calls

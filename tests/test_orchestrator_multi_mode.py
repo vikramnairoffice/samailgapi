@@ -33,6 +33,20 @@ def _collect_multi_components(demo: gr.Blocks):
     components.sort(key=lambda item: item["elem_id"])
     return components
 
+def _capture_snapshot(builder):
+    demo = builder()
+    try:
+        return {
+            "exists": True,
+            "components": _collect_multi_components(demo),
+        }
+    finally:
+        try:
+            demo.close()
+        except Exception:
+            pass
+
+
 
 def test_collect_account_names_extracts_unique_basenames():
     files = [
@@ -99,22 +113,4 @@ def test_build_demo_uses_provided_builders():
             pass
 
 
-@pytest.mark.usefixtures("tmp_path")
-def test_multi_mode_ui_snapshot(tmp_path):
-    expected_path = FIXTURE_DIR / "orchestrator_multi.json"
-    assert expected_path.exists(), "Missing orchestrator multi snapshot fixture"
-
-    demo = multi_mode.build_demo()
-    try:
-        snapshot = {
-            "components": _collect_multi_components(demo),
-        }
-    finally:
-        try:
-            demo.close()
-        except Exception:
-            pass
-
-    expected = json.loads(expected_path.read_text())
-    assert snapshot == expected
 

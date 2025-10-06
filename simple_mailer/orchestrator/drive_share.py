@@ -8,6 +8,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import gradio as gr
 
+from . import modes
 from .email_manual import ManualModeAdapters
 from manual_mode import ManualAttachmentSpec
 
@@ -452,6 +453,30 @@ def build_automatic_demo(*, adapters: Optional[DriveShareAdapters] = None) -> gr
     return demo
 
 
+MODE_DRIVE_MANUAL = modes.Mode(
+    id='drive_share_manual',
+    title='Drive Manual',
+    build_ui=build_manual_demo,
+    to_runner_config=lambda payload, adapters=None: payload,
+    run=lambda config, adapters=None: iter(()),
+)
+
+MODE_DRIVE_AUTOMATIC = modes.Mode(
+    id='drive_share_automatic',
+    title='Drive Automatic',
+    build_ui=build_automatic_demo,
+    to_runner_config=lambda payload, adapters=None: payload,
+    run=lambda config, adapters=None: iter(()),
+)
+
+MODES = {
+    'drive_share_manual': MODE_DRIVE_MANUAL,
+    'drive_share_automatic': MODE_DRIVE_AUTOMATIC,
+}
+
+modes.register_mode(MODE_DRIVE_MANUAL)
+modes.register_mode(MODE_DRIVE_AUTOMATIC)
+
 __all__ = [
     "DriveManualPreview",
     "DriveManualState",
@@ -460,4 +485,5 @@ __all__ = [
     "build_automatic_state",
     "build_manual_demo",
     "build_automatic_demo",
+    "MODES",
 ]

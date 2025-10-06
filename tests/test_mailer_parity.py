@@ -2,7 +2,7 @@ import base64
 from email.parser import BytesParser
 from types import SimpleNamespace
 
-import mailer
+from simple_mailer import mailer
 
 
 def test_send_gmail_message_posts_expected_payload(monkeypatch):

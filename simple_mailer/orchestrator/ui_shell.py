@@ -6,15 +6,22 @@ from typing import Callable, Optional
 
 import gradio as gr
 
-from . import email_manual
+from . import modes
 
 
-def _build_v2_scaffold() -> gr.Blocks:
-    """Return the manual mode orchestrator demo layout."""
-    return email_manual.build_demo()
+def build_ui(*, v2_builder: Optional[Callable[[], gr.Blocks]] = None) -> gr.TabbedInterface:
+    """Assemble the orchestrator UI from registered modes."""
+    if v2_builder is not None:
+        return v2_builder()
+
+    mode_list = list(modes.iter_modes())
+    if not mode_list:
+        raise RuntimeError("No orchestrator modes registered.")
+
+    blocks = [mode.build_ui() for mode in mode_list]
+    titles = [mode.title for mode in mode_list]
+    return gr.TabbedInterface(blocks, titles)
 
 
-def build_ui(*, v2_builder: Optional[Callable[[], gr.Blocks]] = None) -> gr.Blocks:
-    """Return the Blocks instance for the v2 orchestrator."""
-    builder = v2_builder or _build_v2_scaffold
-    return builder()
+__all__ = ["build_ui"]
+

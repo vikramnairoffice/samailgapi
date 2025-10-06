@@ -8,7 +8,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 
 import gradio as gr
 
-from . import drive_share, email_automatic, email_manual
+from . import drive_share, email_automatic, email_manual, modes
 
 
 @dataclass(frozen=True)
@@ -161,10 +161,25 @@ def build_demo(*, builders: Optional[MultiModeBuilders] = None) -> gr.Blocks:
     return demo
 
 
+MODE_MULTI_MODE = modes.Mode(
+    id='multi_mode',
+    title='Multi Mode',
+    build_ui=build_demo,
+    to_runner_config=lambda payload, adapters=None: payload,
+    run=lambda config, adapters=None: iter(()),
+)
+
+MODES = {
+    'multi_mode': MODE_MULTI_MODE,
+}
+
+modes.register_mode(MODE_MULTI_MODE)
+
 __all__ = [
     "MultiModeBuilders",
     "build_demo",
     "collect_account_names",
     "select_active_account",
     "sync_accounts",
+    "MODES",
 ]

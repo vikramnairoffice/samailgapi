@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 import pytest
 
-import mailer
+from simple_mailer import mailer
 
 
 class _DummyCreds:

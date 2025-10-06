@@ -1,6 +1,6 @@
 import types
 
-import mailer
+from simple_mailer import mailer
 
 
 def test_load_accounts_accepts_in_memory_entries():

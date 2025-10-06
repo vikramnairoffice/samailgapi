@@ -2,7 +2,7 @@ import types
 
 import pytest
 
-from ui_token_helpers import authorize_oauth_client, merge_token_sources
+from simple_mailer.ui_token_helpers import authorize_oauth_client, merge_token_sources
 
 
 def test_authorize_oauth_client_appends_account(monkeypatch):
@@ -12,7 +12,7 @@ def test_authorize_oauth_client_appends_account(monkeypatch):
         assert "client" in client_json
         return "user@example.com", dummy_creds
 
-    monkeypatch.setattr("ui_token_helpers.oauth_json.initialize", fake_initialize)
+    monkeypatch.setattr("simple_mailer.ui_token_helpers.oauth_json.initialize", fake_initialize)
 
     message, updated = authorize_oauth_client("client json", [], auth_mode="gmail_api")
 
@@ -32,7 +32,7 @@ def test_authorize_oauth_client_propagates_error(monkeypatch):
     def fake_initialize(client_json, **kwargs):
         raise RuntimeError("bad stuff")
 
-    monkeypatch.setattr("ui_token_helpers.oauth_json.initialize", fake_initialize)
+    monkeypatch.setattr("simple_mailer.ui_token_helpers.oauth_json.initialize", fake_initialize)
 
     message, updated = authorize_oauth_client("client json", [], auth_mode="gmail_api")
     assert "bad stuff" in message

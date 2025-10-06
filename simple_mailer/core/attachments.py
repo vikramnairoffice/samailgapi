@@ -6,8 +6,8 @@ import os
 import random
 from typing import Any, Callable, Dict, Mapping, Optional
 
-from content import IMAGE_ATTACHMENT_DIR as _DEFAULT_IMAGE_DIR
-from content import PDF_ATTACHMENT_DIR as _DEFAULT_PDF_DIR
+from simple_mailer.content import IMAGE_ATTACHMENT_DIR as _DEFAULT_IMAGE_DIR
+from simple_mailer.content import PDF_ATTACHMENT_DIR as _DEFAULT_PDF_DIR
 
 from . import invoice as invoice_adapter
 

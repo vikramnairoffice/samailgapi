@@ -1,6 +1,6 @@
 import pytest
 
-from content import render_tagged_content
+from simple_mailer.content import render_tagged_content
 
 
 def test_render_tagged_content_replaces_curly_tag():

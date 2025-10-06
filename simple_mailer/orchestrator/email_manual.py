@@ -7,10 +7,11 @@ from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import gradio as gr
 
+from . import modes
 from simple_mailer.manual import manual_config_adapter, manual_preview_adapter
 from manual_mode import ManualAttachmentSpec, ManualConfig
-from ui_token_helpers import manual_random_sender_name
-from content import DEFAULT_SENDER_NAME_TYPE, SENDER_NAME_TYPES
+from simple_mailer.ui_token_helpers import manual_random_sender_name
+from simple_mailer.content import DEFAULT_SENDER_NAME_TYPE, SENDER_NAME_TYPES
 
 DEFAULT_PREVIEW_EMAIL = "preview@example.com"
 _PREVIEW_PLACEHOLDER = (
@@ -159,8 +160,8 @@ def build_preview_state(
     )
     choices, default_choice, html_map, meta = adapters.preview_snapshot(
         config,
-        DEFAULT_PREVIEW_EMAIL,
-        selected_attachment_name,
+        preview_email=DEFAULT_PREVIEW_EMAIL,
+        selected_attachment_name=selected_attachment_name,
     )
     return ManualPreviewState(
         choices=list(choices),
@@ -375,6 +376,20 @@ def build_demo(adapters: Optional[ManualModeAdapters] = None) -> gr.Blocks:
     return demo
 
 
+MODE_EMAIL_MANUAL = modes.Mode(
+    id='email_manual',
+    title='Email Manual',
+    build_ui=build_demo,
+    to_runner_config=lambda payload, adapters=None: payload,
+    run=lambda config, adapters=None: iter(()),
+)
+
+MODES = {
+    'email_manual': MODE_EMAIL_MANUAL,
+}
+
+modes.register_mode(MODE_EMAIL_MANUAL)
+
 __all__ = [
     "DEFAULT_PREVIEW_EMAIL",
     "ManualModeAdapters",
@@ -382,4 +397,5 @@ __all__ = [
     "build_manual_config",
     "build_preview_state",
     "build_demo",
+    "MODES",
 ]

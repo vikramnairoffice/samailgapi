@@ -3,6 +3,8 @@
 ## Overview
 This project is a web-based, single-user email sending application designed for dispatching personalized emails via the Gmail REST API. It features a Gradio UI for easy configuration, dynamic content generation, and on-the-fly invoice creation.
 
+All runtime modules now live under the `simple_mailer/` package; references such as `ui.py` refer to `simple_mailer/ui.py`. 
+
 ## Components
 
 - **`ui.py` (Gradio Web Interface):** The application's main entry point. It provides a simple web UI for:

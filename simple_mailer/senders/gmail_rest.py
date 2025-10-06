@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-import mailer
+from simple_mailer import mailer
 
 
 # Keep interface minimal so orchestration layers can pass configuration dicts.

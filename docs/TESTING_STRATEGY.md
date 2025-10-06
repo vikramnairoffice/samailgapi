@@ -15,7 +15,7 @@ Principles
 - senders/gmail_rest: builds MIME with headers/attachments; parity fixtures compare generated payloads with legacy outputs.
 - senders/gmail_smtp: guards required credentials, normalises headers, and wraps legacy SMTP send + mailbox metrics errors for actionable messages.
 - orchestrator/modes: ensures adapters pass through configuration without mutation.
-- orchestrator/ui_shell: feature flag guard (`SIMPLE_MAILER_UI_SHELL=1`) keeps legacy layout default until the new shell is ready.
+- orchestrator/ui_shell: mode registry + tabbed layout tests ensure the orchestrator shell remains the default entry point.
 - `tests/test_mailer_parity.py`: locks Gmail send headers, compose fallbacks, invoice attachments, and delay handling with mocked network and filesystem boundaries.
 
 ## Integration Tests
@@ -57,7 +57,7 @@ Principles
 
 1. Add or update parity test capturing current behaviour.
 2. Introduce adapter or new module; ensure both legacy and new paths run side-by-side.
-3. Flip feature flag only when parity suite, snapshots, and documentation updates are complete.
+3. Promote new implementations only after parity suite, snapshots, and documentation updates are complete.
 
 ## Deterministic Seeds
 

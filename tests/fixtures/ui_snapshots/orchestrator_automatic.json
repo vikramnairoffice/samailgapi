@@ -1,4 +1,5 @@
 {
+  "exists": true,
   "components": [
     {
       "type": "Accordion",

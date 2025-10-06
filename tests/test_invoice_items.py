@@ -1,6 +1,6 @@
-﻿import random
+import random
 
-from invoice import InvoiceGenerator
+from simple_mailer.invoice import InvoiceGenerator
 
 BRAND_POOLS = {
     "Microsoft Office": {

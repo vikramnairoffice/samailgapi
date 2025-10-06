@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-import ui_token_helpers as helpers
+from simple_mailer import ui_token_helpers as helpers
 
 
 class FakeResponse:
