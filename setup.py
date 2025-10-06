@@ -50,6 +50,8 @@ setup(
         'ui_token_helpers',
         'colab_setup',
         'manual_mode',
+        'html_randomizer',
+        'html_renderer',
     ],
     package_data={
         'content_data': [
