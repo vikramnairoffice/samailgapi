@@ -1,4 +1,6 @@
+import asyncio
 import atexit
+import inspect
 from concurrent.futures import Future
 from io import BytesIO
 from pathlib import Path
@@ -45,6 +47,7 @@ class PlaywrightHTMLRenderer:
         self._jobs = Queue()
         self._thread: Optional[Thread] = None
         self._thread_lock = Lock()
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         atexit.register(self.close)
 
     def _ensure_thread(self) -> None:
@@ -55,17 +58,30 @@ class PlaywrightHTMLRenderer:
             self._thread.start()
 
     def _worker(self) -> None:
-        while True:
-            job = self._jobs.get()
-            if job is None:
-                break
-            func, args, kwargs, future = job
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        self._loop = loop
+        try:
+            while True:
+                job = self._jobs.get()
+                if job is None:
+                    break
+                func, args, kwargs, future = job
+                try:
+                    result = func(*args, **kwargs)
+                    if inspect.isawaitable(result):
+                        result = loop.run_until_complete(result)
+                except Exception as exc:  # pragma: no cover - defensive
+                    future.set_exception(exc)
+                else:
+                    future.set_result(result)
+        finally:
             try:
-                result = func(*args, **kwargs)
-            except Exception as exc:  # pragma: no cover - defensive
-                future.set_exception(exc)
-            else:
-                future.set_result(result)
+                if self._browser is not None or self._playwright is not None:
+                    loop.run_until_complete(self._async_shutdown())
+            finally:
+                self._loop = None
+                loop.close()
 
     def _submit(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         self._ensure_thread()
@@ -84,99 +100,114 @@ class PlaywrightHTMLRenderer:
             self._jobs.put(None)
             thread.join(timeout=5)
         else:
-            self._shutdown()
+            if self._browser is not None or self._playwright is not None:
+                def _run_shutdown() -> None:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(self._async_shutdown())
+                    finally:
+                        loop.close()
+
+                temp_thread = Thread(target=_run_shutdown, name="PlaywrightHTMLRendererShutdown", daemon=True)
+                temp_thread.start()
+                temp_thread.join(timeout=5)
         with self._thread_lock:
             self._thread = None
 
-    def _shutdown(self) -> None:
+    async def _async_shutdown(self) -> None:
         if self._browser is not None:
             try:
-                self._browser.close()
+                await self._browser.close()
             finally:
                 self._browser = None
         if self._playwright is not None:
             try:
-                self._playwright.stop()
+                await self._playwright.stop()
             finally:
                 self._playwright = None
 
-    def _ensure_browser(self) -> None:
+    def _shutdown(self) -> Any:
+        return self._async_shutdown()
+
+    async def _ensure_browser(self) -> None:
         if self._browser is not None:
             return
         try:
-            from playwright.sync_api import sync_playwright
+            from playwright.async_api import async_playwright
         except ImportError as exc:  # pragma: no cover - environment dependent
             raise PlaywrightUnavailable(
                 "Playwright is required. Install with `pip install playwright` and run `playwright install chromium`."
             ) from exc
-        playwright = sync_playwright().start()
+        manager = async_playwright()
+        playwright = await manager.start()
         launch_args = [
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu",
         ]
-        browser = playwright.chromium.launch(headless=True, args=launch_args)
+        browser = await playwright.chromium.launch(headless=True, args=launch_args)
         self._playwright = playwright
         self._browser = browser
 
-    def _new_page(self, seed: Optional[int] = None):
-        self._ensure_browser()
-        context = self._browser.new_context(ignore_https_errors=True)
+    async def _new_page(self, seed: Optional[int] = None):
+        await self._ensure_browser()
+        context = await self._browser.new_context(ignore_https_errors=True)
         if seed is not None:
             try:
-                context.add_init_script(_SEED_INIT_SCRIPT.format(seed=int(seed) & 0xFFFFFFFF))
+                await context.add_init_script(_SEED_INIT_SCRIPT.format(seed=int(seed) & 0xFFFFFFFF))
             except Exception:
                 pass
-        page = context.new_page()
+        page = await context.new_page()
         return context, page
 
     def render_pdf(self, html: str, destination: Path, *, format: str = "Letter") -> None:
         self._submit(self._render_pdf, html, destination, format=format)
 
-    def _render_pdf(self, html: str, destination: Path, *, format: str = "Letter") -> None:
-        context, page = self._new_page()
+    async def _render_pdf(self, html: str, destination: Path, *, format: str = "Letter") -> None:
+        context, page = await self._new_page()
         try:
-            page.set_content(html, wait_until="networkidle")
+            await page.set_content(html, wait_until="networkidle")
             destination.parent.mkdir(parents=True, exist_ok=True)
-            page.pdf(
+            await page.pdf(
                 path=str(destination),
                 format=format,
                 print_background=True,
                 prefer_css_page_size=True,
             )
         finally:
-            page.close()
-            context.close()
+            await page.close()
+            await context.close()
 
     def render_image(self, html: str, *, viewport_width: int = 1200) -> Image.Image:
         return self._submit(self._render_image, html, viewport_width=viewport_width)
 
-    def _render_image(self, html: str, *, viewport_width: int = 1200) -> Image.Image:
-        context, page = self._new_page()
+    async def _render_image(self, html: str, *, viewport_width: int = 1200) -> Image.Image:
+        context, page = await self._new_page()
         try:
-            page.set_viewport_size({"width": viewport_width, "height": 720})
-            page.set_content(html, wait_until="networkidle")
-            data = page.screenshot(full_page=True, type="png")
+            await page.set_viewport_size({"width": viewport_width, "height": 720})
+            await page.set_content(html, wait_until="networkidle")
+            data = await page.screenshot(full_page=True, type="png")
         finally:
-            page.close()
-            context.close()
+            await page.close()
+            await context.close()
         return Image.open(BytesIO(data)).convert('RGBA')
 
     def render_html_snapshot(self, html: str, *, wait_ms: int = 120, seed: Optional[int] = None) -> str:
         return self._submit(self._render_html_snapshot, html, wait_ms=wait_ms, seed=seed)
 
-    def _render_html_snapshot(self, html: str, *, wait_ms: int = 120, seed: Optional[int] = None) -> str:
-        context, page = self._new_page(seed=seed)
+    async def _render_html_snapshot(self, html: str, *, wait_ms: int = 120, seed: Optional[int] = None) -> str:
+        context, page = await self._new_page(seed=seed)
         try:
-            page.set_content(html, wait_until="networkidle")
+            await page.set_content(html, wait_until="networkidle")
             if wait_ms and wait_ms > 0:
-                page.wait_for_timeout(wait_ms)
-            page.evaluate("document.querySelectorAll('script').forEach(function(node){node.remove();});")
-            return page.content()
+                await page.wait_for_timeout(wait_ms)
+            await page.evaluate("document.querySelectorAll('script').forEach(function(node){node.remove();});")
+            return await page.content()
         finally:
-            page.close()
-            context.close()
+            await page.close()
+            await context.close()
 
 
 html_renderer = PlaywrightHTMLRenderer()
