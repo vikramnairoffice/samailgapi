@@ -61,6 +61,29 @@ def install_packages():
         print("All required packages are already installed.")
 
 
+def ensure_playwright_browsers():
+    """Download the Chromium bundle that Playwright expects."""
+    try:
+        import playwright  # noqa: F401  # imported for side effect check
+    except ImportError:
+        print(
+            "Playwright is not installed yet; skip downloading browsers. "
+            "Run install_packages() first or install Playwright manually."
+        )
+        return
+
+    print("\nEnsuring Playwright Chromium browser is available...")
+    try:
+        subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
+        print("Chromium downloaded successfully.")
+    except subprocess.CalledProcessError as exc:
+        print(
+            "Warning: Could not download the Playwright Chromium bundle automatically.\n"
+            "Run `playwright install chromium` in a notebook cell to complete the setup."
+        )
+        print(f"  Details: {exc}")
+
+
 def create_directories():
     """Create the directories the application expects at runtime."""
     print("\nPreparing local directories...")
@@ -92,6 +115,7 @@ def launch_app():
 if __name__ == "__main__":
     print("--- Simple Gmail REST Mailer: Colab/bootstrap helper ---")
     install_packages()
+    ensure_playwright_browsers()
     create_directories()
     print("\nUpload Gmail OAuth token JSON files into 'gmail_tokens/' before sending campaigns.")
     launch_app()

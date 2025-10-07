@@ -44,14 +44,15 @@ from ui import main  # launches the Gradio dashboard
      from ui import main
      main()  # opens Gradio in Colab output
      ```
-   - Option B - call the bootstrap helper:
-     ```python
-     import colab_setup
-     colab_setup.install_packages()
-     colab_setup.create_directories()
-     colab_setup.launch_app()
-     ```
-     This installs notebook extras (`google-auth-oauthlib`, `google-api-python-client`), prepares `gmail_tokens/`, `pdfs/`, `images/`, and launches the UI.
+     - Option B - call the bootstrap helper:
+       ```python
+       import colab_setup
+       colab_setup.install_packages()
+       colab_setup.ensure_playwright_browsers()
+       colab_setup.create_directories()
+       colab_setup.launch_app()
+       ```
+       This installs notebook extras (`google-auth-oauthlib`, `google-api-python-client`), downloads the Playwright Chromium browser bundle, prepares `gmail_tokens/`, `pdfs/`, `images/`, and launches the UI.
 
 ## Gmail token requirements
 - Generate OAuth2 refresh tokens with scope `https://mail.google.com/` (e.g., via Google Cloud Console or OAuth playground).
@@ -74,6 +75,29 @@ setup.py            # Packaging configuration
 - `python colab_setup.py` on a workstation installs notebook extras and launches the UI.
 - Use the console script after installation: `simple-mailer`.
 - Keep runtime assets (logos, prebuilt attachments, tokens) out of version control; they are covered in `.gitignore`.
+
+## Troubleshooting
+
+### Playwright errors inside asyncio environments
+
+If you see the message `It looks like you are using Playwright Sync API inside the asyncio loop`,
+the renderer is being driven from an environment that already has an event loop (for example
+Google Colab notebooks). The project now routes every Playwright job through a dedicated
+background thread with its own event loop, so the async API can run safely without colliding with
+the caller's loop. Make sure you are running the refactored renderer located in
+`html_renderer.py`, which creates a worker thread and awaits all Playwright calls on that thread's
+event loop.【F:html_renderer.py†L43-L110】
+
+### Missing Chromium executable
+
+When you run the project in a fresh environment (such as a new Colab session) Playwright may log
+`BrowserType.launch: Executable doesn't exist at .../chromium_headless_shell...` followed by a hint
+to run `playwright install`. This simply means the chromium binary has not been downloaded in that
+runtime yet. Install the browser bundle with `playwright install chromium` (or just
+`playwright install` if you want every browser) before running the renderer again. The `colab_setup`
+helper now calls `ensure_playwright_browsers()` to automate this step for notebook users. The
+renderer will raise a `PlaywrightUnavailable` error explaining the same requirement if the module
+cannot start because the browser payload is missing.【F:html_renderer.py†L132-L144】【F:colab_setup.py†L45-L88】
 
 ## License
 MIT - for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.
