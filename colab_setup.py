@@ -29,6 +29,53 @@ COLAB_EXTRAS = [
 DIRECTORIES = ["pdfs", "images", "logos", "gmail_tokens"]
 
 
+def _playwright_command(*args):
+    """Return a python -m playwright command list for subprocess calls."""
+    return [sys.executable, "-m", "playwright", *args]
+
+
+def _playwright_browsers_root():
+    """Return the directory Playwright uses to store downloaded browsers."""
+    env_path = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if env_path:
+        return Path(env_path)
+    return Path.home() / ".cache" / "ms-playwright"
+
+
+def _chromium_browser_present(root_path=None):
+    """Check whether the Playwright Chromium bundle is already available."""
+    root = Path(root_path) if root_path is not None else _playwright_browsers_root()
+    if not root.exists():
+        return False
+
+    patterns = [
+        "chromium-*",
+        "chromium_*",
+        "chromium-headless-shell-*",
+        "chromium_headless_shell-*",
+    ]
+    for pattern in patterns:
+        for bundle in root.glob(pattern):
+            headless = bundle / "chrome-linux" / "headless_shell"
+            chrome = bundle / "chrome-linux" / "chrome"
+            if headless.exists() or chrome.exists():
+                return True
+    return False
+
+
+def _run_dependency_check():
+    """Run Playwright's dependency check command, if available."""
+    try:
+        subprocess.check_call(_playwright_command("install", "--check"))
+        print("Playwright dependency check passed.")
+    except subprocess.CalledProcessError as exc:
+        print(
+            "Playwright dependency check reported issues. "
+            "Run `playwright install --check` manually for full details."
+        )
+        print(f"  Details: {exc}")
+
+
 def _load_requirements():
     """Return the combined list of requirements for installation."""
     if REQUIREMENTS_FILE.exists():
@@ -73,15 +120,34 @@ def ensure_playwright_browsers():
         return
 
     print("\nEnsuring Playwright Chromium browser is available...")
-    try:
-        subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
-        print("Chromium downloaded successfully.")
-    except subprocess.CalledProcessError as exc:
-        print(
-            "Warning: Could not download the Playwright Chromium bundle automatically.\n"
-            "Run `playwright install chromium` in a notebook cell to complete the setup."
-        )
-        print(f"  Details: {exc}")
+
+    if _chromium_browser_present():
+        print("Chromium bundle already present. Skipping download.")
+        _run_dependency_check()
+        return
+
+    install_commands = [
+        _playwright_command("install", "chromium", "--with-deps"),
+        _playwright_command("install", "chromium"),
+    ]
+
+    last_error = None
+    for command in install_commands:
+        try:
+            subprocess.check_call(command)
+            print("Chromium downloaded successfully.")
+            _run_dependency_check()
+            return
+        except subprocess.CalledProcessError as exc:
+            last_error = exc
+            continue
+
+    print(
+        "Warning: Could not download the Playwright Chromium bundle automatically.\n"
+        "Run `playwright install chromium --with-deps` in a notebook cell to complete the setup."
+    )
+    if last_error is not None:
+        print(f"  Details: {last_error}")
 
 
 def create_directories():

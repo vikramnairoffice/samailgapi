@@ -93,11 +93,12 @@ event loop.【F:html_renderer.py†L43-L110】
 When you run the project in a fresh environment (such as a new Colab session) Playwright may log
 `BrowserType.launch: Executable doesn't exist at .../chromium_headless_shell...` followed by a hint
 to run `playwright install`. This simply means the chromium binary has not been downloaded in that
-runtime yet. Install the browser bundle with `playwright install chromium` (or just
-`playwright install` if you want every browser) before running the renderer again. The `colab_setup`
-helper now calls `ensure_playwright_browsers()` to automate this step for notebook users. The
-renderer will raise a `PlaywrightUnavailable` error explaining the same requirement if the module
-cannot start because the browser payload is missing.【F:html_renderer.py†L132-L144】【F:colab_setup.py†L45-L88】
+runtime yet. Install the browser bundle with `playwright install chromium --with-deps` (or run the
+bootstrap helper which now tries that command automatically and falls back to `playwright install
+chromium`). After the browser downloads you can confirm every dependency is present with
+`playwright install --check`, which the helper also runs for you. The renderer will raise a
+`PlaywrightUnavailable` error explaining the same requirement if the module cannot start because the
+browser payload is missing.【F:html_renderer.py†L132-L144】【F:colab_setup.py†L45-L126】
 
 ## License
 MIT - for educational and legitimate outreach workflows only. Review Google policies before sending bulk email.
